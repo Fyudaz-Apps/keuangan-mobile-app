@@ -4,7 +4,6 @@ import {
   View,
   StyleSheet,
   ViewStyle,
-  ModalProps,
 } from 'react-native';
 
 interface ModalProps {

@@ -1,3 +1,4 @@
+import 'react-native-get-random-values'
 import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
@@ -15,7 +16,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <RootNavigator />
       <StatusBar
-        barStyle={theme === 'dark' ? 'light-content' : 'dark-content'}
+        style={theme === 'dark' ? 'light' : 'dark'}
         backgroundColor="transparent"
       />
     </GestureHandlerRootView>

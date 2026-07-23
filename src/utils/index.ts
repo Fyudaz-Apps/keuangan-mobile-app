@@ -1,10 +1,10 @@
-import { v4 as uuidv4 } from 'uuid';
-
+import { v4 as uuid } from 'uuid'
 /**
  * Generate a unique ID
  */
 export function generateId(): string {
-  return uuidv4();
+  console.log(uuid())
+  return uuid();
 }
 
 /**
@@ -102,7 +102,7 @@ export function debounce<T extends (...args: any[]) => any>(
   func: T,
   delay: number
 ): (...args: Parameters<T>) => void {
-  let timeoutId: NodeJS.Timeout;
+  let timeoutId: any;
 
   return (...args: Parameters<T>) => {
     clearTimeout(timeoutId);

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useTransactionStore, useCategoryStore, useBudgetStore } from '@/store';
 import { Card, Button } from '@/components/ui';
+import AddTransactionModal from '@/components/AddTransactionModal';
 
 interface Transaction {
   id: string;
@@ -34,6 +35,7 @@ export default function DashboardScreen() {
     balance: 0,
   });
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     // Calculate summary
@@ -156,12 +158,17 @@ export default function DashboardScreen() {
             </Text>
             <Button
               title="Add Transaction"
-              onPress={() => {}}
+              onPress={() => setShowAddModal(true)}
               style={styles.emptyButton}
             />
           </Card>
         )}
       </ScrollView>
+
+      <AddTransactionModal
+        visible={showAddModal}
+        onClose={() => setShowAddModal(false)}
+      />
     </SafeAreaView>
   );
 }
