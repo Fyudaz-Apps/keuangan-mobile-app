@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,11 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Card, Button } from '@/components/ui';
+import AddTransactionModal from '@/components/AddTransactionModal';
 
 export default function TransactionsScreen() {
+  const [showAddModal, setShowAddModal] = useState(false);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -19,10 +22,15 @@ export default function TransactionsScreen() {
         </Text>
         <Button
           title="Add Transaction"
-          onPress={() => {}}
+          onPress={() => setShowAddModal(true)}
           style={styles.button}
         />
       </Card>
+
+      <AddTransactionModal
+        visible={showAddModal}
+        onClose={() => setShowAddModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -43,14 +51,16 @@ const styles = StyleSheet.create({
   },
   placeholderCard: {
     marginTop: 16,
+    marginHorizontal: 16,
     alignItems: 'center',
   },
   placeholderText: {
     fontSize: 16,
-    color: '#999999',
+    color: '#666',
+    textAlign: 'center',
     marginBottom: 16,
   },
   button: {
-    marginTop: 8,
+    width: '100%',
   },
 });
