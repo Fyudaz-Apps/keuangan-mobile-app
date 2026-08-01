@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-} from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { Card, Button } from '@/components/ui';
 
 export default function BudgetsScreen() {
@@ -14,14 +9,8 @@ export default function BudgetsScreen() {
         <Text style={styles.headerTitle}>Budgets</Text>
       </View>
       <Card style={styles.placeholderCard}>
-        <Text style={styles.placeholderText}>
-          Budgets screen coming soon...
-        </Text>
-        <Button
-          title="Add Budget"
-          onPress={() => {}}
-          style={styles.button}
-        />
+        <Text style={styles.placeholderText}>Budgets screen coming soon...</Text>
+        <Button title="Add Budget" onPress={() => {}} style={styles.button} />
       </Card>
     </SafeAreaView>
   );

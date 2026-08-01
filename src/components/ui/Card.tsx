@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  Text,
-} from 'react-native';
+import { View, StyleSheet, ViewStyle, TextStyle, Text } from 'react-native';
 
 interface CardProps {
   children: React.ReactNode;
@@ -35,16 +29,7 @@ const Card: React.FC<CardProps> = ({
         style,
       ]}
     >
-      {title && (
-        <Text
-          style={[
-            styles.title,
-            titleStyle,
-          ]}
-        >
-          {title}
-        </Text>
-      )}
+      {title && <Text style={[styles.title, titleStyle]}>{title}</Text>}
       {children}
     </View>
   );

@@ -24,11 +24,7 @@ export default function AppTabs() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <SymbolView
-              name={focused ? 'house.fill' : 'house'}
-              size={24}
-              tintColor={color}
-            />
+            <SymbolView name={focused ? 'house.fill' : 'house'} size={24} tintColor={color} />
           ),
         }}
       />
@@ -37,11 +33,7 @@ export default function AppTabs() {
         options={{
           title: 'Explore',
           tabBarIcon: ({ color, focused }) => (
-            <SymbolView
-              name={focused ? 'safari.fill' : 'safari'}
-              size={24}
-              tintColor={color}
-            />
+            <SymbolView name={focused ? 'safari.fill' : 'safari'} size={24} tintColor={color} />
           ),
         }}
       />

@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  Modal as RNModal,
-  View,
-  StyleSheet,
-  ViewStyle,
-} from 'react-native';
+import { Modal as RNModal, View, StyleSheet, ViewStyle } from 'react-native';
 
 interface ModalProps {
   visible: boolean;
@@ -14,24 +9,11 @@ interface ModalProps {
   contentStyle?: ViewStyle;
 }
 
-const Modal: React.FC<ModalProps> = ({
-  visible,
-  onClose,
-  title,
-  children,
-  contentStyle,
-}) => {
+const Modal: React.FC<ModalProps> = ({ visible, onClose, title, children, contentStyle }) => {
   return (
-    <RNModal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={[styles.container, contentStyle]}>
-          {children}
-        </View>
+        <View style={[styles.container, contentStyle]}>{children}</View>
       </View>
     </RNModal>
   );

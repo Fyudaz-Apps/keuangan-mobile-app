@@ -1,35 +1,53 @@
 import { create } from 'zustand';
 import { Transaction } from '@/database/models';
+import * as realmService from '@/services/realmService';
 
 interface TransactionState {
   transactions: Transaction[];
-  addTransaction: (transaction: Transaction) => void;
-  removeTransaction: (id: string) => void;
-  updateTransaction: (id: string, transaction: Partial<Transaction>) => void;
+  isLoading: boolean;
+  loadFromDb: () => Promise<void>;
+  addTransaction: (transaction: Transaction) => Promise<void>;
+  removeTransaction: (id: string) => Promise<void>;
+  updateTransaction: (id: string, transaction: Partial<Transaction>) => Promise<void>;
   getTransactionsByCategory: (categoryId: string) => Transaction[];
   getTransactionsByDateRange: (startDate: Date, endDate: Date) => Transaction[];
-  clearTransactions: () => void;
+  clearTransactions: () => Promise<void>;
 }
 
 export const useTransactionStore = create<TransactionState>((set, get) => ({
   transactions: [],
+  isLoading: false,
 
-  addTransaction: (transaction: Transaction) =>
+  loadFromDb: async () => {
+    set({ isLoading: true });
+    try {
+      const transactions = await realmService.getAllTransactions();
+      set({ transactions });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  addTransaction: async (transaction: Transaction) => {
+    await realmService.addTransaction(transaction);
     set((state) => ({
       transactions: [...state.transactions, transaction],
-    })),
+    }));
+  },
 
-  removeTransaction: (id: string) =>
+  removeTransaction: async (id: string) => {
+    await realmService.deleteTransaction(id);
     set((state) => ({
       transactions: state.transactions.filter((t) => t.id !== id),
-    })),
+    }));
+  },
 
-  updateTransaction: (id: string, updates: Partial<Transaction>) =>
+  updateTransaction: async (id: string, updates: Partial<Transaction>) => {
+    await realmService.updateTransaction(id, updates);
     set((state) => ({
-      transactions: state.transactions.map((t) =>
-        t.id === id ? { ...t, ...updates } : t
-      ),
-    })),
+      transactions: state.transactions.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+    }));
+  },
 
   getTransactionsByCategory: (categoryId: string) => {
     const state = get();
@@ -38,10 +56,12 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
 
   getTransactionsByDateRange: (startDate: Date, endDate: Date) => {
     const state = get();
-    return state.transactions.filter(
-      (t) => t.date >= startDate && t.date <= endDate
-    );
+    return state.transactions.filter((t) => t.date >= startDate && t.date <= endDate);
   },
 
-  clearTransactions: () => set({ transactions: [] }),
+  clearTransactions: async () => {
+    const { transactions } = get();
+    await Promise.all(transactions.map((t) => realmService.deleteTransaction(t.id)));
+    set({ transactions: [] });
+  },
 }));

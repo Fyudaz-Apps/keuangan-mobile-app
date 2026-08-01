@@ -25,12 +25,10 @@ const DEFAULT_CATEGORIES = [
  * Parse a natural language text input into a structured transaction
  * using Google Gemini API (direct HTTP fetch).
  */
-export async function parseTransactionWithAI(
-  input: string,
-): Promise<ParsedTransaction> {
+export async function parseTransactionWithAI(input: string): Promise<ParsedTransaction> {
   if (!GEMINI_API_KEY) {
     throw new Error(
-      'Gemini API key is not configured. Add EXPO_PUBLIC_GEMINI_API_KEY to your .env file.',
+      'Gemini API key is not configured. Add EXPO_PUBLIC_GEMINI_API_KEY to your .env file.'
     );
   }
 
@@ -77,8 +75,7 @@ Respond ONLY with a valid JSON object (no markdown, no explanation):
 
   const data = await response.json();
 
-  const textContent =
-    data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
   // Extract JSON from the response (handle possible markdown wrapping)
   const jsonMatch = textContent.match(/\{[\s\S]*\}/);

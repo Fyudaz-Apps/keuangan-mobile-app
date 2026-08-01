@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,82 +10,160 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Modal, Input, Button } from '@/components/ui';
-import { useTransactionStore } from '@/store';
+import { useTransactionStore, useCategoryStore } from '@/store';
 import {
   parseTransactionWithAI,
   isGeminiConfigured,
   ParsedTransaction,
 } from '@/services/geminiService';
-import { generateId } from '@/utils';
+import { generateId, formatDate } from '@/utils';
+import { Transaction } from '@/database/models';
 
-const CATEGORIES = [
-  'Food',
-  'Transport',
-  'Entertainment',
-  'Utilities',
-  'Health',
-  'Education',
-  'Shopping',
-  'Salary',
-  'Other',
-];
+const transactionFormSchema = z.object({
+  amount: z
+    .string()
+    .min(1, 'Jumlah wajib diisi')
+    .refine((value) => parseAmount(value) > 0, 'Jumlah harus lebih dari 0'),
+  description: z.string().trim().min(1, 'Deskripsi wajib diisi'),
+  category: z.string().min(1, 'Pilih kategori'),
+  type: z.enum(['income', 'expense']),
+  date: z.date(),
+  notes: z.string().optional(),
+});
+
+type TransactionFormValues = z.infer<typeof transactionFormSchema>;
+
+function parseAmount(value: string): number {
+  const cleaned = value.replace(/[^\d.,]/g, '');
+  const normalized = cleaned.replace(/\./g, '').replace(',', '.');
+  const num = Number(normalized);
+  return isNaN(num) ? 0 : num;
+}
+
+const defaultFormValues: TransactionFormValues = {
+  amount: '',
+  description: '',
+  category: '',
+  type: 'expense',
+  date: new Date(),
+  notes: '',
+};
 
 interface AddTransactionModalProps {
   visible: boolean;
   onClose: () => void;
+  editingTransaction?: Transaction | null;
 }
 
 export default function AddTransactionModal({
   visible,
   onClose,
+  editingTransaction,
 }: AddTransactionModalProps) {
-  const { addTransaction } = useTransactionStore();
+  const { addTransaction, updateTransaction } = useTransactionStore();
+  const { categories } = useCategoryStore();
 
-  // Form state
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Other');
-  const [type, setType] = useState<'income' | 'expense'>('expense');
+  const {
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<TransactionFormValues>({
+    resolver: zodResolver(transactionFormSchema),
+    defaultValues: defaultFormValues,
+  });
 
-  // AI assist state
   const [aiInput, setAiInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const resetForm = () => {
-    setAmount('');
-    setDescription('');
-    setCategory('Other');
-    setType('expense');
-    setAiInput('');
+  const type = watch('type');
+  const date = watch('date');
+  const amount = watch('amount');
+  const description = watch('description');
+  const category = watch('category');
+  const notes = watch('notes');
+
+  const isEditing = !!editingTransaction;
+
+  const typeCategories = categories.filter((c) => c.type === type);
+
+  useEffect(() => {
+    if (visible) {
+      if (editingTransaction) {
+        reset({
+          amount: String(editingTransaction.amount),
+          description: editingTransaction.description,
+          category: editingTransaction.category,
+          type: editingTransaction.type,
+          date: new Date(editingTransaction.date),
+          notes: editingTransaction.notes ?? '',
+        });
+      } else {
+        reset(defaultFormValues);
+      }
+      setAiInput('');
+    }
+  }, [visible, editingTransaction, reset]);
+
+  const handleTypeChange = (nextType: 'income' | 'expense') => {
+    setValue('type', nextType, { shouldValidate: true });
+    if (category && !categories.find((c) => c.type === nextType && c.id === category)) {
+      const firstOfType = categories.find((c) => c.type === nextType);
+      setValue('category', firstOfType?.id ?? '', { shouldValidate: true });
+    }
   };
 
-  const handleSave = () => {
-    const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      Alert.alert('Error', 'Masukkan jumlah yang valid.');
-      return;
+  const onDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
     }
-    if (!description.trim()) {
-      Alert.alert('Error', 'Masukkan deskripsi transaksi.');
-      return;
+    if (selectedDate) {
+      setValue('date', selectedDate, { shouldValidate: true });
     }
+  };
 
-    const now = new Date();
-    addTransaction({
-      id: generateId(),
-      amount: numericAmount,
-      description: description.trim(),
-      category,
-      type,
-      date: now,
-      createdAt: now,
-      updatedAt: now,
-    });
+  const onSubmit = async (values: TransactionFormValues) => {
+    setIsSaving(true);
+    try {
+      const now = new Date();
+      const payload = {
+        amount: parseAmount(values.amount),
+        description: values.description.trim(),
+        category: values.category,
+        type: values.type,
+        date: values.date,
+        notes: values.notes?.trim() || undefined,
+      };
 
-    resetForm();
-    onClose();
-    Alert.alert('Berhasil', 'Transaksi berhasil ditambahkan!');
+      if (editingTransaction) {
+        await updateTransaction(editingTransaction.id, {
+          ...payload,
+          updatedAt: now,
+        });
+      } else {
+        await addTransaction({
+          ...payload,
+          id: generateId(),
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      reset();
+      onClose();
+    } catch {
+      Alert.alert('Error', 'Gagal menyimpan transaksi. Silakan coba lagi.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleAiParse = async () => {
@@ -97,25 +175,26 @@ export default function AddTransactionModal({
     if (!isGeminiConfigured()) {
       Alert.alert(
         'Gemini Belum Dikonfigurasi',
-        'Tambahkan EXPO_PUBLIC_GEMINI_API_KEY di file .env',
+        'Tambahkan EXPO_PUBLIC_GEMINI_API_KEY di file .env'
       );
       return;
     }
 
     setIsLoading(true);
     try {
-      const parsed: ParsedTransaction = await parseTransactionWithAI(
-        aiInput.trim(),
+      const parsed: ParsedTransaction = await parseTransactionWithAI(aiInput.trim());
+      setValue('amount', String(parsed.amount));
+      setValue('description', parsed.description);
+      setValue('type', parsed.type);
+      const categoriesOfType = categories.filter((c) => c.type === parsed.type);
+      const matched = categoriesOfType.find(
+        (c) => c.name.toLowerCase() === parsed.category.toLowerCase()
       );
-      setAmount(parsed.amount.toString());
-      setDescription(parsed.description);
-      setCategory(parsed.category);
-      setType(parsed.type);
+      setValue('category', matched?.id ?? categoriesOfType[0]?.id ?? '', {
+        shouldValidate: true,
+      });
     } catch (error: any) {
-      Alert.alert(
-        'AI Error',
-        error.message || 'Gagal mem-parse transaksi dengan AI.',
-      );
+      Alert.alert('AI Error', error.message || 'Gagal mem-parse transaksi dengan AI.');
     } finally {
       setIsLoading(false);
     }
@@ -123,43 +202,38 @@ export default function AddTransactionModal({
 
   return (
     <Modal visible={visible} onClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.title}>Tambah Transaksi</Text>
+          <Text style={styles.title}>{isEditing ? 'Edit Transaksi' : 'Tambah Transaksi'}</Text>
 
-          {/* AI Assist Section */}
-          <View style={styles.aiSection}>
-            <Text style={styles.sectionLabel}>✨ AI Assist</Text>
-            <Text style={styles.aiHint}>
-              Ketik deskripsi natural, misalnya: "makan bakso 25rb" atau "gaji
-              bulanan 5jt"
-            </Text>
-            <Input
-              placeholder='Contoh: "beli kopi 18rb"'
-              value={aiInput}
-              onChangeText={setAiInput}
-              editable={!isLoading}
-            />
-            <Button
-              title={isLoading ? 'Memproses...' : '🤖 Parse dengan AI'}
-              onPress={handleAiParse}
-              disabled={isLoading}
-              variant="secondary"
-              size="small"
-              style={styles.aiButton}
-            />
-            {isLoading && (
-              <ActivityIndicator
-                size="small"
-                color="#208AEF"
-                style={styles.loader}
+          {/* AI Assist Section (only when adding) */}
+          {!isEditing && (
+            <View style={styles.aiSection}>
+              <Text style={styles.sectionLabel}>✨ AI Assist</Text>
+              <Text style={styles.aiHint}>
+                {'Ketik deskripsi natural, misalnya: "makan bakso 25rb" atau "gaji bulanan 5jt"'}
+              </Text>
+              <Input
+                placeholder='Contoh: "beli kopi 18rb"'
+                value={aiInput}
+                onChangeText={setAiInput}
+                editable={!isLoading}
               />
-            )}
-          </View>
+              <Button
+                title={isLoading ? 'Memproses...' : '🤖 Parse dengan AI'}
+                onPress={handleAiParse}
+                disabled={isLoading}
+                variant="secondary"
+                size="small"
+                style={styles.aiButton}
+              />
+              {isLoading && (
+                <ActivityIndicator size="small" color="#208AEF" style={styles.loader} />
+              )}
+            </View>
+          )}
 
-          <View style={styles.divider} />
+          {!isEditing && <View style={styles.divider} />}
 
           {/* Manual Form */}
           <Text style={styles.sectionLabel}>📝 Detail Transaksi</Text>
@@ -167,33 +241,21 @@ export default function AddTransactionModal({
           {/* Type Toggle */}
           <View style={styles.typeToggle}>
             <TouchableOpacity
-              style={[
-                styles.typeButton,
-                type === 'expense' && styles.typeButtonActiveExpense,
-              ]}
-              onPress={() => setType('expense')}
+              style={[styles.typeButton, type === 'expense' && styles.typeButtonActiveExpense]}
+              onPress={() => handleTypeChange('expense')}
             >
               <Text
-                style={[
-                  styles.typeButtonText,
-                  type === 'expense' && styles.typeButtonTextActive,
-                ]}
+                style={[styles.typeButtonText, type === 'expense' && styles.typeButtonTextActive]}
               >
                 💸 Pengeluaran
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.typeButton,
-                type === 'income' && styles.typeButtonActiveIncome,
-              ]}
-              onPress={() => setType('income')}
+              style={[styles.typeButton, type === 'income' && styles.typeButtonActiveIncome]}
+              onPress={() => handleTypeChange('income')}
             >
               <Text
-                style={[
-                  styles.typeButtonText,
-                  type === 'income' && styles.typeButtonTextActive,
-                ]}
+                style={[styles.typeButtonText, type === 'income' && styles.typeButtonTextActive]}
               >
                 💰 Pemasukan
               </Text>
@@ -204,52 +266,79 @@ export default function AddTransactionModal({
             label="Jumlah (Rp)"
             placeholder="Contoh: 25000"
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={(text) => setValue('amount', text, { shouldValidate: true })}
             keyboardType="numeric"
+            error={errors.amount?.message}
           />
 
           <Input
             label="Deskripsi"
             placeholder="Contoh: Makan siang"
             value={description}
-            onChangeText={setDescription}
+            onChangeText={(text) => setValue('description', text, { shouldValidate: true })}
+            error={errors.description?.message}
           />
+
+          {/* Date Picker */}
+          <Text style={styles.fieldLabel}>Tanggal</Text>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.dateButtonText}>{date ? formatDate(date) : 'Pilih tanggal'}</Text>
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={date || new Date()}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onDateChange}
+            />
+          )}
 
           {/* Category Picker */}
           <Text style={styles.fieldLabel}>Kategori</Text>
-          <View style={styles.categoryGrid}>
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[
-                  styles.categoryChip,
-                  category === cat && styles.categoryChipActive,
-                ]}
-                onPress={() => setCategory(cat)}
-              >
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    category === cat && styles.categoryChipTextActive,
-                  ]}
+          {typeCategories.length === 0 ? (
+            <Text style={styles.emptyCategoryText}>Belum ada kategori untuk tipe ini.</Text>
+          ) : (
+            <View style={styles.categoryGrid}>
+              {typeCategories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[styles.categoryChip, category === cat.id && styles.categoryChipActive]}
+                  onPress={() => setValue('category', cat.id, { shouldValidate: true })}
                 >
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                  <Text
+                    style={[
+                      styles.categoryChipText,
+                      category === cat.id && styles.categoryChipTextActive,
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          {errors.category && <Text style={styles.errorText}>{errors.category.message}</Text>}
+
+          <Input
+            label="Catatan (opsional)"
+            placeholder="Catatan tambahan"
+            value={notes}
+            onChangeText={(text) => setValue('notes', text)}
+            multiline
+          />
 
           {/* Action Buttons */}
           <View style={styles.actions}>
             <Button
-              title="Simpan"
-              onPress={handleSave}
+              title={isSaving ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Simpan'}
+              onPress={handleSubmit(onSubmit)}
+              disabled={isSaving}
               style={styles.saveButton}
             />
             <Button
               title="Batal"
               onPress={() => {
-                resetForm();
+                reset();
                 onClose();
               }}
               variant="secondary"
@@ -334,11 +423,23 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: '#000',
   },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  dateButtonText: {
+    fontSize: 14,
+    color: '#000',
+  },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   categoryChip: {
     paddingVertical: 6,
@@ -359,6 +460,16 @@ const styles = StyleSheet.create({
   categoryChipTextActive: {
     color: '#fff',
     fontWeight: '600',
+  },
+  emptyCategoryText: {
+    fontSize: 13,
+    color: '#999',
+    marginBottom: 8,
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 12,
+    marginBottom: 4,
   },
   actions: {
     marginTop: 8,

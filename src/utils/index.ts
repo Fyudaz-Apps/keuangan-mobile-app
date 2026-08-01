@@ -1,9 +1,8 @@
-import { v4 as uuid } from 'uuid'
+import { v4 as uuid } from 'uuid';
 /**
  * Generate a unique ID
  */
 export function generateId(): string {
-  console.log(uuid())
   return uuid();
 }
 
@@ -90,9 +89,7 @@ export function getEndOfWeek(date: Date = new Date()): Date {
  */
 export function daysBetween(date1: Date, date2: Date): number {
   const oneDay = 24 * 60 * 60 * 1000;
-  return Math.round(
-    Math.abs((new Date(date1).getTime() - new Date(date2).getTime()) / oneDay)
-  );
+  return Math.round(Math.abs((new Date(date1).getTime() - new Date(date2).getTime()) / oneDay));
 }
 
 /**
