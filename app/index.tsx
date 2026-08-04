@@ -3,13 +3,27 @@ import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { RootNavigator } from '@/navigation';
-import { useAppStore } from '@/store';
+import { useAppStore, useTransactionStore, useCategoryStore, useBudgetStore } from '@/store';
+import { seedDefaultCategories } from '@/services/dbService';
 
 export default function App() {
   const { theme } = useAppStore();
 
   useEffect(() => {
-    // Initialize app
+    const initializeApp = async () => {
+      try {
+        await seedDefaultCategories();
+        await Promise.all([
+          useTransactionStore.getState().loadFromDb(),
+          useCategoryStore.getState().loadFromDb(),
+          useBudgetStore.getState().loadFromDb(),
+        ]);
+      } catch (error) {
+        console.error('Failed to initialize database:', error);
+      }
+    };
+
+    initializeApp();
   }, []);
 
   return (
