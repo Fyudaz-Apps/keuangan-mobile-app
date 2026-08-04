@@ -14,7 +14,7 @@ This project is pinned to **Expo SDK 54** (`expo ~54.0.0`, RN 0.81, React 19.1).
 ## Architecture (not obvious from filenames)
 
 - Entry is `app/index.tsx` (`main: expo-router/entry`) with NO `_layout.tsx` and no other route files. Navigation is manual React Navigation, not expo-router file routing. Add screens under `src/screens/` and register them in `src/navigation/BottomTabNavigator.tsx` + `src/navigation/types.ts` (RootStackParamList / TabParamList).
-- Zustand stores in `src/store/` are **in-memory only** — they hydrate from and write through to SQLite via `src/services/dbService.ts` (expo-sqlite, DB file `keuangan.db`). `src/services/realmService.ts` is a stale Realm implementation that is **not connected** to any store or screen.
+- Zustand stores in `src/store/` are **in-memory only** — they hydrate from and write through to SQLite via `src/services/dbService.ts` (expo-sqlite, DB file `keuangan.db`).
 - expo-sqlite is a native module: the app needs a dev build (`npx expo run:android`), it will NOT work in Expo Go. The `Transaction` SQL table name must be quoted as `"Transaction"` (SQLite reserved keyword).
 - `react-native-get-random-values` must be imported before `uuid` (already done at the top of `app/index.tsx`) — keep any new uuid usage after it.
 - Gemini integration (`src/services/geminiService.ts`) reads the API key at call time via `src/services/keyService.ts`: priority is `expo-secure-store` (set from Settings screen) → fallback `process.env.EXPO_PUBLIC_GEMINI_API_KEY`. `isGeminiConfigured()` is async. env vars need the `EXPO_PUBLIC_` prefix to be inlined; configure via `.env` (gitignored; `.env.example` is the template).

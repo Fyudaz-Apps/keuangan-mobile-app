@@ -37,7 +37,6 @@ src/
     dbService.ts            # SQLite CRUD (expo-sqlite) — ACTIVE
     geminiService.ts        # AI text parsing (Gemini)
     keyService.ts           # Gemini key: SecureStore -> .env fallback
-    realmService.ts         # DEAD CODE — Realm, not connected
   store/                    # Zustand: transaction, category, budget, app
   navigation/               # types.ts, index.tsx, BottomTabNavigator.tsx
   screens/                  # dashboard, transactions, categories, budgets, Settings

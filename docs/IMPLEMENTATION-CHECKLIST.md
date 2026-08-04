@@ -24,7 +24,6 @@
 - [x] Full CRUD for all three entities (add / get all / update / delete)
 - [x] Default category seeding on first launch (`seedDefaultCategories`)
 - [x] Stores (Zustand) hydrate from DB via `loadFromDb()` and write through on every mutation
-- [x] `src/services/realmService.ts` kept as dead code — NOT connected to any store or screen. Do not build on it.
 
 ### AI Parsing — `src/services/geminiService.ts`
 - [x] Text-only transaction parsing via `parseTransactionWithAI(input)`

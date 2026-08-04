@@ -17,7 +17,6 @@
 - Tables: `"Transaction"` (quoted — reserved keyword), `Category`, `Budget`
 - Default categories auto-seeded on first launch
 - Zustand stores hydrate from / write through to SQLite
-- `src/services/realmService.ts` — dead code, not wired to anything
 
 ### 3. State (Zustand)
 - `transactionStore`, `categoryStore`, `budgetStore`, `appStore` (theme)
@@ -35,7 +34,6 @@
 - `dbService.ts` — SQLite CRUD (active)
 - `geminiService.ts` — AI text parsing (Gemini)
 - `keyService.ts` — Gemini key lookup (SecureStore → `.env` fallback)
-- `realmService.ts` — dead code, not connected
 
 ### 7. Code quality
 - ESLint flat config + Prettier + `npm run type-check`

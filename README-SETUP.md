@@ -26,7 +26,6 @@ keuangan-mobile-app/
 │   │   ├── dbService.ts          # SQLite CRUD (expo-sqlite) - the active DB layer
 │   │   ├── geminiService.ts      # AI transaction parsing (Gemini)
 │   │   ├── keyService.ts         # Gemini key lookup (SecureStore -> .env fallback)
-│   │   └── realmService.ts       # DEAD CODE - Realm implementation, not wired to anything
 │   ├── store/                    # Zustand stores (in-memory, hydrate from dbService)
 │   ├── utils/                    # Utility functions
 │   └── constants/                # App constants
@@ -118,7 +117,6 @@ Gotchas:
 - `Transaction` is a SQLite reserved keyword — the table name is always quoted as `"Transaction"` in SQL. `Transaction` (interface) and `Transactions` (screen name) are unaffected.
 - Default categories are seeded on first launch (`seedDefaultCategories`).
 - Schema is created with `CREATE TABLE IF NOT EXISTS` — no migration framework yet.
-- `src/services/realmService.ts` is a stale Realm implementation that is **not connected** to any store or screen. Do not use it.
 
 ### Gemini API Key
 
