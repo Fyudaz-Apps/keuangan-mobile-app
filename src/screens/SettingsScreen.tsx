@@ -1,10 +1,6 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Button } from '@/components/ui';
 
 export default function SettingsScreen() {
@@ -14,14 +10,8 @@ export default function SettingsScreen() {
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
       <Card style={styles.placeholderCard}>
-        <Text style={styles.placeholderText}>
-          Settings screen coming soon...
-        </Text>
-        <Button
-          title="Configure"
-          onPress={() => {}}
-          style={styles.button}
-        />
+        <Text style={styles.placeholderText}>Settings screen coming soon...</Text>
+        <Button title="Configure" onPress={() => {}} style={styles.button} />
       </Card>
     </SafeAreaView>
   );
