@@ -1,11 +1,14 @@
 import 'react-native-get-random-values';
 import React, { useEffect } from 'react';
+import { LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { RootNavigator } from '@/navigation';
 import { useAppStore, useTransactionStore, useCategoryStore, useBudgetStore } from '@/store';
 import { seedDefaultCategories } from '@/services/dbService';
+
+LogBox.ignoreLogs(["Passing an object as the argument to 'navigate'"]);
 
 export default function App() {
   const { theme } = useAppStore();
