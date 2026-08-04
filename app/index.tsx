@@ -1,6 +1,7 @@
 import 'react-native-get-random-values';
 import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { RootNavigator } from '@/navigation';
 import { useAppStore, useTransactionStore, useCategoryStore, useBudgetStore } from '@/store';
@@ -28,8 +29,10 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <RootNavigator />
-      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor="transparent" />
+      <SafeAreaProvider>
+        <RootNavigator />
+        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor="transparent" />
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, Text, SafeAreaView } from 'react-native';
+import { View, ScrollView, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTransactionStore, useCategoryStore, useBudgetStore } from '@/store';
 import { Card, Button } from '@/components/ui';
 import AddTransactionModal from '@/components/AddTransactionModal';
