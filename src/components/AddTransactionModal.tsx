@@ -36,10 +36,7 @@ interface AddTransactionModalProps {
   onClose: () => void;
 }
 
-export default function AddTransactionModal({
-  visible,
-  onClose,
-}: AddTransactionModalProps) {
+export default function AddTransactionModal({ visible, onClose }: AddTransactionModalProps) {
   const { addTransaction } = useTransactionStore();
 
   // Form state
@@ -94,28 +91,23 @@ export default function AddTransactionModal({
       return;
     }
 
-    if (!isGeminiConfigured()) {
+    if (!(await isGeminiConfigured())) {
       Alert.alert(
         'Gemini Belum Dikonfigurasi',
-        'Tambahkan EXPO_PUBLIC_GEMINI_API_KEY di file .env',
+        'Tambahkan Gemini API key di Settings atau EXPO_PUBLIC_GEMINI_API_KEY di file .env'
       );
       return;
     }
 
     setIsLoading(true);
     try {
-      const parsed: ParsedTransaction = await parseTransactionWithAI(
-        aiInput.trim(),
-      );
+      const parsed: ParsedTransaction = await parseTransactionWithAI(aiInput.trim());
       setAmount(parsed.amount.toString());
       setDescription(parsed.description);
       setCategory(parsed.category);
       setType(parsed.type);
     } catch (error: any) {
-      Alert.alert(
-        'AI Error',
-        error.message || 'Gagal mem-parse transaksi dengan AI.',
-      );
+      Alert.alert('AI Error', error.message || 'Gagal mem-parse transaksi dengan AI.');
     } finally {
       setIsLoading(false);
     }
@@ -123,9 +115,7 @@ export default function AddTransactionModal({
 
   return (
     <Modal visible={visible} onClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <Text style={styles.title}>Tambah Transaksi</Text>
 
@@ -133,8 +123,7 @@ export default function AddTransactionModal({
           <View style={styles.aiSection}>
             <Text style={styles.sectionLabel}>✨ AI Assist</Text>
             <Text style={styles.aiHint}>
-              Ketik deskripsi natural, misalnya: "makan bakso 25rb" atau "gaji
-              bulanan 5jt"
+              Ketik deskripsi natural, misalnya: "makan bakso 25rb" atau "gaji bulanan 5jt"
             </Text>
             <Input
               placeholder='Contoh: "beli kopi 18rb"'
@@ -150,13 +139,7 @@ export default function AddTransactionModal({
               size="small"
               style={styles.aiButton}
             />
-            {isLoading && (
-              <ActivityIndicator
-                size="small"
-                color="#208AEF"
-                style={styles.loader}
-              />
-            )}
+            {isLoading && <ActivityIndicator size="small" color="#208AEF" style={styles.loader} />}
           </View>
 
           <View style={styles.divider} />
@@ -167,33 +150,21 @@ export default function AddTransactionModal({
           {/* Type Toggle */}
           <View style={styles.typeToggle}>
             <TouchableOpacity
-              style={[
-                styles.typeButton,
-                type === 'expense' && styles.typeButtonActiveExpense,
-              ]}
+              style={[styles.typeButton, type === 'expense' && styles.typeButtonActiveExpense]}
               onPress={() => setType('expense')}
             >
               <Text
-                style={[
-                  styles.typeButtonText,
-                  type === 'expense' && styles.typeButtonTextActive,
-                ]}
+                style={[styles.typeButtonText, type === 'expense' && styles.typeButtonTextActive]}
               >
                 💸 Pengeluaran
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.typeButton,
-                type === 'income' && styles.typeButtonActiveIncome,
-              ]}
+              style={[styles.typeButton, type === 'income' && styles.typeButtonActiveIncome]}
               onPress={() => setType('income')}
             >
               <Text
-                style={[
-                  styles.typeButtonText,
-                  type === 'income' && styles.typeButtonTextActive,
-                ]}
+                style={[styles.typeButtonText, type === 'income' && styles.typeButtonTextActive]}
               >
                 💰 Pemasukan
               </Text>
@@ -221,10 +192,7 @@ export default function AddTransactionModal({
             {CATEGORIES.map((cat) => (
               <TouchableOpacity
                 key={cat}
-                style={[
-                  styles.categoryChip,
-                  category === cat && styles.categoryChipActive,
-                ]}
+                style={[styles.categoryChip, category === cat && styles.categoryChipActive]}
                 onPress={() => setCategory(cat)}
               >
                 <Text
@@ -241,11 +209,7 @@ export default function AddTransactionModal({
 
           {/* Action Buttons */}
           <View style={styles.actions}>
-            <Button
-              title="Simpan"
-              onPress={handleSave}
-              style={styles.saveButton}
-            />
+            <Button title="Simpan" onPress={handleSave} style={styles.saveButton} />
             <Button
               title="Batal"
               onPress={() => {

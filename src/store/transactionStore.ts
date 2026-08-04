@@ -26,9 +26,7 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
 
   updateTransaction: (id: string, updates: Partial<Transaction>) =>
     set((state) => ({
-      transactions: state.transactions.map((t) =>
-        t.id === id ? { ...t, ...updates } : t
-      ),
+      transactions: state.transactions.map((t) => (t.id === id ? { ...t, ...updates } : t)),
     })),
 
   getTransactionsByCategory: (categoryId: string) => {
@@ -38,9 +36,7 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
 
   getTransactionsByDateRange: (startDate: Date, endDate: Date) => {
     const state = get();
-    return state.transactions.filter(
-      (t) => t.date >= startDate && t.date <= endDate
-    );
+    return state.transactions.filter((t) => t.date >= startDate && t.date <= endDate);
   },
 
   clearTransactions: () => set({ transactions: [] }),

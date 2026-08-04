@@ -25,9 +25,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
 
   updateBudget: (id: string, updates: Partial<Budget>) =>
     set((state) => ({
-      budgets: state.budgets.map((b) =>
-        b.id === id ? { ...b, ...updates } : b
-      ),
+      budgets: state.budgets.map((b) => (b.id === id ? { ...b, ...updates } : b)),
     })),
 
   getBudgetsByCategory: (categoryId: string) => {

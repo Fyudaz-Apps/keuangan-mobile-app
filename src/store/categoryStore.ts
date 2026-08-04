@@ -25,9 +25,7 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
 
   updateCategory: (id: string, updates: Partial<Category>) =>
     set((state) => ({
-      categories: state.categories.map((c) =>
-        c.id === id ? { ...c, ...updates } : c
-      ),
+      categories: state.categories.map((c) => (c.id === id ? { ...c, ...updates } : c)),
     })),
 
   getCategoriesByType: (type: 'income' | 'expense') => {

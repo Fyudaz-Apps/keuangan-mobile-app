@@ -1,10 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-} from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { Card, Button } from '@/components/ui';
 import AddTransactionModal from '@/components/AddTransactionModal';
 
@@ -17,9 +12,7 @@ export default function TransactionsScreen() {
         <Text style={styles.headerTitle}>Transactions</Text>
       </View>
       <Card style={styles.placeholderCard}>
-        <Text style={styles.placeholderText}>
-          Transactions screen coming soon...
-        </Text>
+        <Text style={styles.placeholderText}>Transactions screen coming soon...</Text>
         <Button
           title="Add Transaction"
           onPress={() => setShowAddModal(true)}
@@ -27,10 +20,7 @@ export default function TransactionsScreen() {
         />
       </Card>
 
-      <AddTransactionModal
-        visible={showAddModal}
-        onClose={() => setShowAddModal(false)}
-      />
+      <AddTransactionModal visible={showAddModal} onClose={() => setShowAddModal(false)} />
     </SafeAreaView>
   );
 }

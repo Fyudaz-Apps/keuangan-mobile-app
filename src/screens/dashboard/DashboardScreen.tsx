@@ -1,11 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Text,
-  SafeAreaView,
-} from 'react-native';
+import { View, ScrollView, StyleSheet, Text, SafeAreaView } from 'react-native';
 import { useTransactionStore, useCategoryStore, useBudgetStore } from '@/store';
 import { Card, Button } from '@/components/ui';
 import AddTransactionModal from '@/components/AddTransactionModal';
@@ -74,9 +68,7 @@ export default function DashboardScreen() {
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Total Income</Text>
-              <Text style={styles.summaryValue}>
-                Rp {summary.totalIncome.toLocaleString()}
-              </Text>
+              <Text style={styles.summaryValue}>Rp {summary.totalIncome.toLocaleString()}</Text>
             </View>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Total Expense</Text>
@@ -124,9 +116,7 @@ export default function DashboardScreen() {
             {recentTransactions.map((transaction) => (
               <View key={transaction.id} style={styles.transactionItem}>
                 <View style={styles.transactionInfo}>
-                  <Text style={styles.transactionDescription}>
-                    {transaction.description}
-                  </Text>
+                  <Text style={styles.transactionDescription}>{transaction.description}</Text>
                   <Text style={styles.transactionDate}>
                     {new Date(transaction.date).toLocaleDateString()}
                   </Text>
@@ -135,10 +125,7 @@ export default function DashboardScreen() {
                   style={[
                     styles.transactionAmount,
                     {
-                      color:
-                        transaction.type === 'income'
-                          ? '#4caf50'
-                          : '#ff6b6b',
+                      color: transaction.type === 'income' ? '#4caf50' : '#ff6b6b',
                     },
                   ]}
                 >
@@ -165,10 +152,7 @@ export default function DashboardScreen() {
         )}
       </ScrollView>
 
-      <AddTransactionModal
-        visible={showAddModal}
-        onClose={() => setShowAddModal(false)}
-      />
+      <AddTransactionModal visible={showAddModal} onClose={() => setShowAddModal(false)} />
     </SafeAreaView>
   );
 }

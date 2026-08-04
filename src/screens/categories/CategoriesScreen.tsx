@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-} from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { Card, Button } from '@/components/ui';
 
 export default function CategoriesScreen() {
@@ -14,14 +9,8 @@ export default function CategoriesScreen() {
         <Text style={styles.headerTitle}>Categories</Text>
       </View>
       <Card style={styles.placeholderCard}>
-        <Text style={styles.placeholderText}>
-          Categories screen coming soon...
-        </Text>
-        <Button
-          title="Add Category"
-          onPress={() => {}}
-          style={styles.button}
-        />
+        <Text style={styles.placeholderText}>Categories screen coming soon...</Text>
+        <Button title="Add Category" onPress={() => {}} style={styles.button} />
       </Card>
     </SafeAreaView>
   );

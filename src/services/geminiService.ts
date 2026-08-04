@@ -1,4 +1,5 @@
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
+import { getGeminiKey } from './keyService';
+
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
@@ -25,12 +26,11 @@ const DEFAULT_CATEGORIES = [
  * Parse a natural language text input into a structured transaction
  * using Google Gemini API (direct HTTP fetch).
  */
-export async function parseTransactionWithAI(
-  input: string,
-): Promise<ParsedTransaction> {
-  if (!GEMINI_API_KEY) {
+export async function parseTransactionWithAI(input: string): Promise<ParsedTransaction> {
+  const apiKey = await getGeminiKey();
+  if (!apiKey) {
     throw new Error(
-      'Gemini API key is not configured. Add EXPO_PUBLIC_GEMINI_API_KEY to your .env file.',
+      'Gemini API key is not configured. Add one in Settings or via EXPO_PUBLIC_GEMINI_API_KEY in your .env file.'
     );
   }
 
@@ -51,7 +51,7 @@ Text: "${input}"
 Respond ONLY with a valid JSON object (no markdown, no explanation):
 {"amount": <number>, "description": "<string>", "category": "<string>", "type": "<income|expense>"}`;
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -77,8 +77,7 @@ Respond ONLY with a valid JSON object (no markdown, no explanation):
 
   const data = await response.json();
 
-  const textContent =
-    data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
   // Extract JSON from the response (handle possible markdown wrapping)
   const jsonMatch = textContent.match(/\{[\s\S]*\}/);
@@ -105,6 +104,6 @@ Respond ONLY with a valid JSON object (no markdown, no explanation):
 /**
  * Check if the Gemini API key is configured
  */
-export function isGeminiConfigured(): boolean {
-  return !!GEMINI_API_KEY;
+export async function isGeminiConfigured(): Promise<boolean> {
+  return !!(await getGeminiKey());
 }

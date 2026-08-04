@@ -57,10 +57,7 @@ export async function getAllTransactions(): Promise<Transaction[]> {
 export async function deleteTransaction(id: string): Promise<void> {
   const realm = await getRealm();
   realm.write(() => {
-    const transaction = realm.objectForPrimaryKey<Transaction>(
-      'Transaction',
-      id
-    );
+    const transaction = realm.objectForPrimaryKey<Transaction>('Transaction', id);
     if (transaction) {
       realm.delete(transaction);
     }
@@ -70,16 +67,10 @@ export async function deleteTransaction(id: string): Promise<void> {
 /**
  * Update a transaction
  */
-export async function updateTransaction(
-  id: string,
-  updates: Partial<Transaction>
-): Promise<void> {
+export async function updateTransaction(id: string, updates: Partial<Transaction>): Promise<void> {
   const realm = await getRealm();
   realm.write(() => {
-    const transaction = realm.objectForPrimaryKey<Transaction>(
-      'Transaction',
-      id
-    );
+    const transaction = realm.objectForPrimaryKey<Transaction>('Transaction', id);
     if (transaction) {
       Object.assign(transaction, updates);
     }
@@ -120,10 +111,7 @@ export async function deleteCategory(id: string): Promise<void> {
 /**
  * Update a category
  */
-export async function updateCategory(
-  id: string,
-  updates: Partial<Category>
-): Promise<void> {
+export async function updateCategory(id: string, updates: Partial<Category>): Promise<void> {
   const realm = await getRealm();
   realm.write(() => {
     const category = realm.objectForPrimaryKey<Category>('Category', id);
@@ -167,10 +155,7 @@ export async function deleteBudget(id: string): Promise<void> {
 /**
  * Update a budget
  */
-export async function updateBudget(
-  id: string,
-  updates: Partial<Budget>
-): Promise<void> {
+export async function updateBudget(id: string, updates: Partial<Budget>): Promise<void> {
   const realm = await getRealm();
   realm.write(() => {
     const budget = realm.objectForPrimaryKey<Budget>('Budget', id);
