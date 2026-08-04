@@ -17,15 +17,15 @@ This project is pinned to **Expo SDK 54** (`expo ~54.0.0`, RN 0.81, React 19.1).
 - Zustand stores in `src/store/` are **in-memory only** — they hydrate from and write through to SQLite via `src/services/dbService.ts` (expo-sqlite, DB file `keuangan.db`). `src/services/realmService.ts` is a stale Realm implementation that is **not connected** to any store or screen.
 - expo-sqlite is a native module: the app needs a dev build (`npx expo run:android`), it will NOT work in Expo Go. The `Transaction` SQL table name must be quoted as `"Transaction"` (SQLite reserved keyword).
 - `react-native-get-random-values` must be imported before `uuid` (already done at the top of `app/index.tsx`) — keep any new uuid usage after it.
-- Gemini integration (`src/services/geminiService.ts`) reads `process.env.EXPO_PUBLIC_GEMINI_API_KEY`; env vars need the `EXPO_PUBLIC_` prefix to be inlined. Configure via `.env` (gitignored; `.env.example` is the template).
+- Gemini integration (`src/services/geminiService.ts`) reads the API key at call time via `src/services/keyService.ts`: priority is `expo-secure-store` (set from Settings screen) → fallback `process.env.EXPO_PUBLIC_GEMINI_API_KEY`. `isGeminiConfigured()` is async. env vars need the `EXPO_PUBLIC_` prefix to be inlined; configure via `.env` (gitignored; `.env.example` is the template).
 - Path aliases: `@/*` -> `src/*`, `@/assets/*` -> `assets/*`.
 - `app.json` enables `experiments.typedRoutes` and `experiments.reactCompiler` — respect React Compiler constraints.
 - UI strings are a mixed Indonesian/English; the product targets id-ID / IDR. Match the file you're editing.
 
 ## Conventions
 
-- Prettier: single quotes, semicolons, printWidth 100, trailingComma es5. ESLint extends `expo` + `prettier`; `no-console` is a warning.
-- Styling is RN `StyleSheet` (no NativeWind/Tailwind despite `docs/` mentioning it). Brand colors live in `src/constants/index.ts` (primary `#208AEF`, success `#4caf50`, error `#ff6b6b`), though screens often hardcode them.
+- Prettier: single quotes, semicolons, printWidth 100, trailingComma es5, `endOfLine: auto` (repo uses CRLF on Windows via git `core.autocrlf`). ESLint uses a flat config `eslint.config.js` (typescript-eslint recommended + `prettier/prettier` as error, `no-console`/`no-unused-vars` as warnings; `no-explicit-any` and `no-require-imports` are off to match legacy behavior).
+- Styling is RN `StyleSheet` (no NativeWind/Tailwind). Brand colors live in `src/constants/index.ts` (primary `#208AEF`, success `#4caf50`, error `#ff6b6b`), though screens often hardcode them.
 - `docs/` (PRD, IMPLEMENTATION-CHECKLIST, GEMINI-INTEGRATION-GUIDE, etc.) is maintained to match the current SQLite-based code. Trust code first, but docs are kept accurate.
 
 Existing instruction sources: `CLAUDE.md` just includes this file. `README-SETUP.md` is the up-to-date setup/architecture reference (SQLite). `docs/` is kept in sync with the code.

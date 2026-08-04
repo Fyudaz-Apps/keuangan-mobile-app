@@ -1,10 +1,10 @@
 # Product Requirements Document (PRD)
 ## Keuangan Mobile App
 
-**Document Version:** 2.0  
-**Date Updated:** 2026-08-05  
-**Status:** Active — reflects current implementation  
-**Platform:** iOS & Android (Expo SDK 54, React Native)  
+**Document Version:** 2.0
+**Date Updated:** 2026-08-05
+**Status:** Active — reflects current implementation
+**Platform:** iOS & Android (Expo SDK 54, React Native)
 **Reference:** `README-SETUP.md` for architecture; `IMPLEMENTATION-CHECKLIST.md` for status.
 
 ---
@@ -17,6 +17,7 @@ Aplikasi finansial **standalone, offline-first** di iOS dan Android. Semua data 
 - **Mobile only**: iOS & Android
 - **Data lokal**: SQLite (`expo-sqlite`), file `keuangan.db` — bukan Realm, tanpa encryption
 - **AI input**: Gemini API untuk parsing teks transaksi (client-side `fetch`) — OCR foto & voice TIDAK diimplementasikan
+- **Key management**: API key bisa diisi via Settings (expo-secure-store) dengan fallback `.env`
 - **No backend**: tanpa server API / auth server
 - **Offline-first**: bekerja tanpa internet
 - **Export CSV/PDF**: belum diimplementasikan
@@ -48,11 +49,12 @@ Aplikasi finansial **standalone, offline-first** di iOS dan Android. Semua data 
 
 #### Settings
 - Preferensi aplikasi
+- **Gemini API Key** (save / clear, disimpan di expo-secure-store)
 
 #### Navigation & UI
 - Bottom tab: Dashboard → Transactions → Categories → Budgets → Settings
 - `StyleSheet` (tanpa NativeWind), brand color primary `#208AEF`
-- Dark/light theme state ada di `appStore` (implementasi UI belum penuh)
+- `SafeAreaView` dari `react-native-safe-area-context`
 
 ---
 
@@ -85,8 +87,9 @@ Aplikasi finansial **standalone, offline-first** di iOS dan Android. Semua data 
 ## AI Integration
 
 - Satu fungsi: `parseTransactionWithAI(input)` di `src/services/geminiService.ts`
-- Provider: 9router (OpenAI-compatible proxy) jika `EXPO_PUBLIC_9ROUTER_URL` + key terisi; selain itu Gemini via HTTP
-- Env vars `EXPO_PUBLIC_*` di `.env`; key Gemini valid mulai `AIza`
+- Key di-resolve saat panggil via `src/services/keyService.ts`: SecureStore (Settings) → `EXPO_PUBLIC_GEMINI_API_KEY` (`.env`)
+- Gemini REST via `fetch`, tanpa SDK
+- Key Gemini valid mulai `AIza`
 
 Lihat `GEMINI-INTEGRATION-GUIDE.md` untuk detail.
 
@@ -94,7 +97,7 @@ Lihat `GEMINI-INTEGRATION-GUIDE.md` untuk detail.
 
 ## Non-Functional Requirements
 
-- **Dev build wajib**: expo-sqlite native module → Expo Go tidak jalan
+- **Dev build wajib**: expo-sqlite & expo-secure-store native module → Expo Go tidak jalan
 - **Startup**: init DB + seed categories + load stores di `app/index.tsx` `useEffect`
 - **Code quality**: `npm run lint`, `npm run type-check`, `npm run format:check` sebelum selesai
 

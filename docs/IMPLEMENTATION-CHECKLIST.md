@@ -1,21 +1,21 @@
 # Implementation Checklist
 ## Keuangan Mobile App - Current State
 
-**Project**: Keuangan Mobile App  
-**Architecture**: Expo SDK 54 + React Native 0.81 + TypeScript, offline-first, SQLite  
-**Date**: 2026-08-05  
+**Project**: Keuangan Mobile App
+**Architecture**: Expo SDK 54 + React Native 0.81 + TypeScript, offline-first, SQLite
+**Date**: 2026-08-05
 **Reference**: `README-SETUP.md` is the source of truth. This checklist reflects what is actually implemented.
 
 ---
 
-## ✅ Implemented
+## Implemented
 
 ### Foundation
 - [x] Expo SDK 54 project (`expo ~54.0.0`, RN 0.81, React 19.1)
 - [x] TypeScript strict + path aliases (`@/*` -> `src/*`)
-- [x] ESLint (`expo` + `prettier` configs), Prettier, `type-check`
+- [x] ESLint flat config (`eslint.config.js`, typescript-eslint + prettier), Prettier, `type-check`
 - [x] Navigation: manual React Navigation — root stack + 5-tab bottom navigator
-- [x] `SafeAreaView` via `react-native-safe-area-context` (RN core version deprecated)
+- [x] SafeAreaView via `react-native-safe-area-context` (RN core version deprecated)
 
 ### Database (expo-sqlite) — `src/services/dbService.ts`
 - [x] DB file `keuangan.db`, opened with `openDatabaseSync`
@@ -26,25 +26,26 @@
 - [x] Stores (Zustand) hydrate from DB via `loadFromDb()` and write through on every mutation
 - [x] `src/services/realmService.ts` kept as dead code — NOT connected to any store or screen. Do not build on it.
 
+### AI Parsing — `src/services/geminiService.ts`
+- [x] Text-only transaction parsing via `parseTransactionWithAI(input)`
+- [x] Gemini via direct `fetch` (no SDK)
+- [x] Key resolution via `src/services/keyService.ts`: `expo-secure-store` (set from Settings) → `EXPO_PUBLIC_GEMINI_API_KEY` fallback
+- [x] Settings screen: save / clear the Gemini API key
+
 ### Screens
 - [x] Dashboard
 - [x] Transactions (list + add/edit form, date picker)
 - [x] Categories
 - [x] Budgets
-- [x] Settings
-
-### AI Parsing — `src/services/geminiService.ts`
-- [x] Text-only transaction parsing via `parseTransactionWithAI(input)`
-- [x] Provider chain: 9router (OpenAI-compatible) when configured, else Gemini via direct `fetch`
-- [x] `EXPO_PUBLIC_` env vars read from `.env`
+- [x] Settings (incl. Gemini API key)
 
 ### Build / Tooling
-- [x] `npm run prebuild` (`expo prebuild --clean`) — required because expo-sqlite is a native module; Expo Go will NOT work
+- [x] `npm run prebuild` (`expo prebuild --clean`) — required because expo-sqlite/expo-secure-store are native modules; Expo Go will NOT work
 - [x] Scripts: `start`, `android`, `ios`, `web`, `lint`, `lint:fix`, `format`, `format:check`, `type-check`
 
 ---
 
-## ⬜ Not implemented (planned / out of scope)
+## Not implemented (planned / out of scope)
 
 - Category management screen (list exists; add/edit/delete UI not complete)
 - Budget management (CRUD screen incomplete)

@@ -1,8 +1,8 @@
 # Keuangan Mobile App - Setup Summary
 
-**Status**: SET UP — MVP working with local SQLite  
-**Date**: 2026-08-05  
-**Reference**: `README-SETUP.md` is the source of truth. `docs/` older revisions (Realm-based) are obsolete.
+**Status**: SET UP — MVP working with local SQLite
+**Date**: 2026-08-05
+**Reference**: `README-SETUP.md` is the source of truth. Older revisions of this doc (Realm-based) are obsolete.
 
 ---
 
@@ -17,6 +17,7 @@
 - Tables: `"Transaction"` (quoted — reserved keyword), `Category`, `Budget`
 - Default categories auto-seeded on first launch
 - Zustand stores hydrate from / write through to SQLite
+- `src/services/realmService.ts` — dead code, not wired to anything
 
 ### 3. State (Zustand)
 - `transactionStore`, `categoryStore`, `budgetStore`, `appStore` (theme)
@@ -28,14 +29,16 @@
 
 ### 5. Screens
 - Dashboard, Transactions, Categories, Budgets, Settings (in `src/screens/`)
+- Settings includes Gemini API key management (save/clear)
 
 ### 6. Services
 - `dbService.ts` — SQLite CRUD (active)
-- `geminiService.ts` — AI text parsing (9router → Gemini fallback)
-- `realmService.ts` — dead code, not wired to anything
+- `geminiService.ts` — AI text parsing (Gemini)
+- `keyService.ts` — Gemini key lookup (SecureStore → `.env` fallback)
+- `realmService.ts` — dead code, not connected
 
 ### 7. Code quality
-- ESLint + Prettier + `npm run type-check`
+- ESLint flat config + Prettier + `npm run type-check`
 - Verify before finishing: `lint` → `type-check` → `format:check`
 
 ---
@@ -44,16 +47,17 @@
 
 ```bash
 npm install
-cp .env.example .env        # add EXPO_PUBLIC_GEMINI_API_KEY (AIza...)
+cp .env.example .env        # optional; add EXPO_PUBLIC_GEMINI_API_KEY as fallback
 npm run prebuild            # native modules need a dev build
 npm run android             # or: npm run ios / npm start
 ```
 
-## Environment (`.env`)
+## Gemini API key
 
-Only `EXPO_PUBLIC_`-prefixed vars reach the app:
-- `EXPO_PUBLIC_GEMINI_API_KEY` — Gemini key (`AIza...`)
-- `EXPO_PUBLIC_9ROUTER_URL` / `EXPO_PUBLIC_9ROUTER_API_KEY` / `EXPO_PUBLIC_9ROUTER_MODEL` — optional local AI proxy; used instead of Gemini when both URL and key are set
+Two sources, checked in this order at call time:
+
+1. **Settings screen** (expo-secure-store, per device)
+2. **`.env`** — `EXPO_PUBLIC_GEMINI_API_KEY` (fallback)
 
 ## Not implemented yet
 
