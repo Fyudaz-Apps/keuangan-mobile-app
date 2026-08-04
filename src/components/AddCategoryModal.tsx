@@ -1,0 +1,230 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { Modal, Input, Button } from '@/components/ui';
+import { useCategoryStore } from '@/store';
+import { generateId } from '@/utils';
+
+const COLORS = ['#ff6b6b', '#ffa502', '#4caf50', '#208AEF', '#a55eea', '#666666'];
+const ICONS = [
+  'tag',
+  'restaurant',
+  'cart',
+  'car',
+  'flash',
+  'medical',
+  'school',
+  'game-controller',
+  'gift',
+  'cash',
+];
+
+interface AddCategoryModalProps {
+  visible: boolean;
+  onClose: () => void;
+}
+
+export default function AddCategoryModal({ visible, onClose }: AddCategoryModalProps) {
+  const { addCategory } = useCategoryStore();
+  const [name, setName] = useState('');
+  const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [color, setColor] = useState(COLORS[0]);
+  const [icon, setIcon] = useState(ICONS[0]);
+
+  const resetForm = () => {
+    setName('');
+    setType('expense');
+    setColor(COLORS[0]);
+    setIcon(ICONS[0]);
+  };
+
+  const handleSave = () => {
+    if (!name.trim()) {
+      Alert.alert('Error', 'Masukkan nama kategori.');
+      return;
+    }
+
+    const now = new Date();
+    addCategory({
+      id: generateId(),
+      name: name.trim(),
+      color,
+      icon,
+      type,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    resetForm();
+    onClose();
+    Alert.alert('Berhasil', 'Kategori berhasil ditambahkan!');
+  };
+
+  return (
+    <Modal visible={visible} onClose={onClose}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Tambah Kategori</Text>
+
+        <View style={styles.typeToggle}>
+          <TouchableOpacity
+            style={[styles.typeButton, type === 'expense' && styles.typeButtonActiveExpense]}
+            onPress={() => setType('expense')}
+          >
+            <Text
+              style={[styles.typeButtonText, type === 'expense' && styles.typeButtonTextActive]}
+            >
+              💸 Pengeluaran
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.typeButton, type === 'income' && styles.typeButtonActiveIncome]}
+            onPress={() => setType('income')}
+          >
+            <Text style={[styles.typeButtonText, type === 'income' && styles.typeButtonTextActive]}>
+              💰 Pemasukan
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <Input
+          label="Nama Kategori"
+          placeholder="Contoh: Transportasi"
+          value={name}
+          onChangeText={setName}
+        />
+
+        <Text style={styles.fieldLabel}>Warna</Text>
+        <View style={styles.optionRow}>
+          {COLORS.map((c) => (
+            <TouchableOpacity
+              key={c}
+              style={[
+                styles.colorDot,
+                { backgroundColor: c },
+                color === c && styles.colorDotActive,
+              ]}
+              onPress={() => setColor(c)}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.fieldLabel}>Ikon</Text>
+        <View style={styles.iconGrid}>
+          {ICONS.map((i) => (
+            <TouchableOpacity
+              key={i}
+              style={[styles.iconChip, icon === i && styles.iconChipActive]}
+              onPress={() => setIcon(i)}
+            >
+              <Text style={styles.iconText}>{i === 'tag' ? '🏷️' : i}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.actions}>
+          <Button title="Simpan" onPress={handleSave} style={styles.saveButton} />
+          <Button
+            title="Batal"
+            onPress={() => {
+              resetForm();
+              onClose();
+            }}
+            variant="secondary"
+            style={styles.cancelButton}
+          />
+        </View>
+      </ScrollView>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  typeToggle: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    gap: 8,
+  },
+  typeButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
+    alignItems: 'center',
+  },
+  typeButtonActiveExpense: {
+    backgroundColor: '#ffe0e0',
+    borderColor: '#ff4444',
+  },
+  typeButtonActiveIncome: {
+    backgroundColor: '#e0ffe0',
+    borderColor: '#44bb44',
+  },
+  typeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  typeButtonTextActive: {
+    color: '#000',
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    marginTop: 8,
+    color: '#000',
+  },
+  optionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 8,
+  },
+  colorDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  colorDotActive: {
+    borderWidth: 3,
+    borderColor: '#000',
+  },
+  iconGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  iconChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
+    backgroundColor: '#f9f9f9',
+  },
+  iconChipActive: {
+    backgroundColor: '#208AEF',
+    borderColor: '#208AEF',
+  },
+  iconText: {
+    fontSize: 13,
+    color: '#555',
+  },
+  actions: {
+    marginTop: 8,
+    gap: 8,
+  },
+  saveButton: {
+    marginTop: 4,
+  },
+  cancelButton: {
+    marginTop: 0,
+  },
+});

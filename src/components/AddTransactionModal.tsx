@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Modal, Input, Button } from '@/components/ui';
-import { useTransactionStore } from '@/store';
+import { useTransactionStore, useCategoryStore } from '@/store';
 import {
   parseTransactionWithAI,
   isGeminiConfigured,
@@ -19,17 +19,17 @@ import {
 } from '@/services/geminiService';
 import { generateId } from '@/utils';
 
-const CATEGORIES = [
-  'Food',
-  'Transport',
-  'Entertainment',
-  'Utilities',
-  'Health',
-  'Education',
-  'Shopping',
-  'Salary',
-  'Other',
-];
+const AI_CATEGORY_MAP: Record<string, string> = {
+  Food: 'Makanan',
+  Transport: 'Transportasi',
+  Entertainment: 'Hiburan',
+  Utilities: 'Utilitas',
+  Health: 'Kesehatan',
+  Education: 'Pendidikan',
+  Shopping: 'Belanja',
+  Salary: 'Gaji',
+  Other: 'Lainnya',
+};
 
 interface AddTransactionModalProps {
   visible: boolean;
@@ -38,11 +38,12 @@ interface AddTransactionModalProps {
 
 export default function AddTransactionModal({ visible, onClose }: AddTransactionModalProps) {
   const { addTransaction } = useTransactionStore();
+  const { categories } = useCategoryStore();
 
   // Form state
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Other');
+  const [category, setCategory] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
 
   // AI assist state
@@ -52,7 +53,7 @@ export default function AddTransactionModal({ visible, onClose }: AddTransaction
   const resetForm = () => {
     setAmount('');
     setDescription('');
-    setCategory('Other');
+    setCategory('');
     setType('expense');
     setAiInput('');
   };
@@ -65,6 +66,10 @@ export default function AddTransactionModal({ visible, onClose }: AddTransaction
     }
     if (!description.trim()) {
       Alert.alert('Error', 'Masukkan deskripsi transaksi.');
+      return;
+    }
+    if (!category) {
+      Alert.alert('Error', 'Pilih kategori.');
       return;
     }
 
@@ -104,8 +109,10 @@ export default function AddTransactionModal({ visible, onClose }: AddTransaction
       const parsed: ParsedTransaction = await parseTransactionWithAI(aiInput.trim());
       setAmount(parsed.amount.toString());
       setDescription(parsed.description);
-      setCategory(parsed.category);
       setType(parsed.type);
+      const mappedName = AI_CATEGORY_MAP[parsed.category] ?? parsed.category;
+      const localMatch = categories.find((c) => c.name === mappedName && c.type === parsed.type);
+      setCategory(localMatch ? localMatch.name : mappedName);
     } catch (error: any) {
       Alert.alert('AI Error', error.message || 'Gagal mem-parse transaksi dengan AI.');
     } finally {
@@ -189,22 +196,24 @@ export default function AddTransactionModal({ visible, onClose }: AddTransaction
           {/* Category Picker */}
           <Text style={styles.fieldLabel}>Kategori</Text>
           <View style={styles.categoryGrid}>
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.categoryChip, category === cat && styles.categoryChipActive]}
-                onPress={() => setCategory(cat)}
-              >
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    category === cat && styles.categoryChipTextActive,
-                  ]}
+            {categories
+              .filter((cat) => cat.type === type)
+              .map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[styles.categoryChip, category === cat.name && styles.categoryChipActive]}
+                  onPress={() => setCategory(cat.name)}
                 >
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.categoryChipText,
+                      category === cat.name && styles.categoryChipTextActive,
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
           </View>
 
           {/* Action Buttons */}

@@ -1,17 +1,64 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
-import { Card, Button } from '@/components/ui';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+  SafeAreaView,
+} from 'react-native';
+import { useBudgetStore, useCategoryStore } from '@/store';
+import AddBudgetModal from '@/components/AddBudgetModal';
 
 export default function BudgetsScreen() {
+  const { budgets, removeBudget } = useBudgetStore();
+  const { categories } = useCategoryStore();
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? id;
+
+  const handleDelete = (id: string, name: string) => {
+    Alert.alert('Hapus Budget', `Hapus budget "${name}"?`, [
+      { text: 'Batal', style: 'cancel' },
+      {
+        text: 'Hapus',
+        style: 'destructive',
+        onPress: () => removeBudget(id),
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Budgets</Text>
+        <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
+          <Text style={styles.addButtonText}>+ Add</Text>
+        </TouchableOpacity>
       </View>
-      <Card style={styles.placeholderCard}>
-        <Text style={styles.placeholderText}>Budgets screen coming soon...</Text>
-        <Button title="Add Budget" onPress={() => {}} style={styles.button} />
-      </Card>
+
+      <FlatList
+        data={budgets}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={<Text style={styles.emptyText}>Belum ada budget.</Text>}
+        renderItem={({ item }) => (
+          <View style={styles.row}>
+            <View style={styles.rowInfo}>
+              <Text style={styles.rowName}>{categoryName(item.category)}</Text>
+              <Text style={styles.rowSub}>
+                Rp {item.amount.toLocaleString()} · {item.period}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => handleDelete(item.id, categoryName(item.category))}>
+              <Text style={styles.deleteText}>Hapus</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+
+      <AddBudgetModal visible={showAddModal} onClose={() => setShowAddModal(false)} />
     </SafeAreaView>
   );
 }
@@ -24,22 +71,58 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#000000',
   },
-  placeholderCard: {
-    marginTop: 16,
+  addButton: {
+    backgroundColor: '#208AEF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#999',
+    marginTop: 32,
+  },
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
   },
-  placeholderText: {
+  rowInfo: {
+    flex: 1,
+  },
+  rowName: {
     fontSize: 16,
-    color: '#999999',
-    marginBottom: 16,
+    fontWeight: '600',
+    color: '#000',
   },
-  button: {
-    marginTop: 8,
+  rowSub: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  deleteText: {
+    color: '#ff4444',
+    fontSize: 13,
   },
 });
