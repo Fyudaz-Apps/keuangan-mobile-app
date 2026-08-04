@@ -4,7 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { RootNavigator } from '@/navigation';
 import { useAppStore, useTransactionStore, useCategoryStore, useBudgetStore } from '@/store';
-import { seedDefaultCategories, getRealm } from '@/services/realmService';
+import { seedDefaultCategories } from '@/services/dbService';
 
 export default function App() {
   const { theme } = useAppStore();
@@ -12,7 +12,6 @@ export default function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        await getRealm();
         await seedDefaultCategories();
         await Promise.all([
           useTransactionStore.getState().loadFromDb(),

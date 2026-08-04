@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Category } from '@/database/models';
-import * as realmService from '@/services/realmService';
+import * as dbService from '@/services/dbService';
 
 interface CategoryState {
   categories: Category[];
@@ -20,7 +20,7 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   loadFromDb: async () => {
     set({ isLoading: true });
     try {
-      const categories = await realmService.getAllCategories();
+      const categories = await dbService.getAllCategories();
       set({ categories });
     } finally {
       set({ isLoading: false });
@@ -28,21 +28,21 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   },
 
   addCategory: async (category: Category) => {
-    await realmService.addCategory(category);
+    await dbService.addCategory(category);
     set((state) => ({
       categories: [...state.categories, category],
     }));
   },
 
   removeCategory: async (id: string) => {
-    await realmService.deleteCategory(id);
+    await dbService.deleteCategory(id);
     set((state) => ({
       categories: state.categories.filter((c) => c.id !== id),
     }));
   },
 
   updateCategory: async (id: string, updates: Partial<Category>) => {
-    await realmService.updateCategory(id, updates);
+    await dbService.updateCategory(id, updates);
     set((state) => ({
       categories: state.categories.map((c) => (c.id === id ? { ...c, ...updates } : c)),
     }));
@@ -55,7 +55,7 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
 
   clearCategories: async () => {
     const { categories } = get();
-    await Promise.all(categories.map((c) => realmService.deleteCategory(c.id)));
+    await Promise.all(categories.map((c) => dbService.deleteCategory(c.id)));
     set({ categories: [] });
   },
 }));

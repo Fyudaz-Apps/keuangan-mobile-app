@@ -18,7 +18,7 @@ import { Modal, Input, Button } from '@/components/ui';
 import { useTransactionStore, useCategoryStore } from '@/store';
 import {
   parseTransactionWithAI,
-  isGeminiConfigured,
+  isAiProviderConfigured,
   ParsedTransaction,
 } from '@/services/geminiService';
 import { generateId, formatDate } from '@/utils';
@@ -172,10 +172,10 @@ export default function AddTransactionModal({
       return;
     }
 
-    if (!isGeminiConfigured()) {
+    if (!isAiProviderConfigured()) {
       Alert.alert(
-        'Gemini Belum Dikonfigurasi',
-        'Tambahkan EXPO_PUBLIC_GEMINI_API_KEY di file .env'
+        'AI Provider Belum Dikonfigurasi',
+        'Tambahkan EXPO_PUBLIC_9ROUTER_URL dan EXPO_PUBLIC_9ROUTER_API_KEY ke file .env'
       );
       return;
     }

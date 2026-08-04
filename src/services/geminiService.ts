@@ -1,6 +1,12 @@
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
+const ROUTER_API_URL = process.env.EXPO_PUBLIC_9ROUTER_URL?.trim() || '';
+const ROUTER_API_KEY = process.env.EXPO_PUBLIC_9ROUTER_API_KEY?.trim() || '';
+const ROUTER_MODEL = process.env.EXPO_PUBLIC_9ROUTER_MODEL?.trim() || 'gpt-4o-mini';
+
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY?.trim() || '';
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+const useRouterProvider = !!ROUTER_API_URL && !!ROUTER_API_KEY;
 
 export interface ParsedTransaction {
   amount: number;
@@ -25,13 +31,72 @@ const DEFAULT_CATEGORIES = [
  * Parse a natural language text input into a structured transaction
  * using Google Gemini API (direct HTTP fetch).
  */
-export async function parseTransactionWithAI(input: string): Promise<ParsedTransaction> {
-  if (!GEMINI_API_KEY) {
-    throw new Error(
-      'Gemini API key is not configured. Add EXPO_PUBLIC_GEMINI_API_KEY to your .env file.'
-    );
+async function parseWithRouter(input: string): Promise<ParsedTransaction> {
+  const prompt = `You are a financial transaction parser for an Indonesian personal finance app.
+Parse the following text into a structured transaction.
+
+Available categories: ${DEFAULT_CATEGORIES.join(', ')}
+
+Rules:
+- "amount" must be a positive number in IDR (Indonesian Rupiah).
+- Common abbreviations: "rb" or "ribu" = thousands, "jt" or "juta" = millions.
+- "type" is "expense" by default, unless the text clearly indicates income (e.g., "gaji", "salary", "terima", "dapat", "bonus").
+- "category" must be one of the available categories listed above. Pick the closest match.
+- "description" should be a concise summary of the transaction.
+
+Text: "${input}"
+
+Respond ONLY with a valid JSON object (no markdown, no explanation):
+{"amount": <number>, "description": "<string>", "category": "<string>", "type": "<income|expense>"}`;
+
+  const response = await fetch(`${ROUTER_API_URL.replace(/\/+$/g, '')}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${ROUTER_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: ROUTER_MODEL,
+      messages: [
+        { role: 'system', content: 'You are a financial transaction parser for an Indonesian personal finance app.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.1,
+      max_tokens: 256,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error('9router AI error:', errorBody);
+    throw new Error(`9router API request failed: ${response.status}`);
   }
 
+  const data = await response.json();
+  const textContent = data?.choices?.[0]?.message?.content || '';
+
+  // Extract JSON from the response (handle possible markdown wrapping)
+  const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('Could not parse AI response into a transaction.');
+  }
+
+  const parsed: ParsedTransaction = JSON.parse(jsonMatch[0]);
+
+  if (
+    typeof parsed.amount !== 'number' ||
+    parsed.amount <= 0 ||
+    !parsed.description ||
+    !parsed.category ||
+    !['income', 'expense'].includes(parsed.type)
+  ) {
+    throw new Error('AI returned an invalid transaction format.');
+  }
+
+  return parsed;
+}
+
+async function parseWithGemini(input: string): Promise<ParsedTransaction> {
   const prompt = `You are a financial transaction parser for an Indonesian personal finance app.
 Parse the following text into a structured transaction.
 
@@ -74,10 +139,8 @@ Respond ONLY with a valid JSON object (no markdown, no explanation):
   }
 
   const data = await response.json();
-
   const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-  // Extract JSON from the response (handle possible markdown wrapping)
   const jsonMatch = textContent.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     throw new Error('Could not parse AI response into a transaction.');
@@ -85,7 +148,6 @@ Respond ONLY with a valid JSON object (no markdown, no explanation):
 
   const parsed: ParsedTransaction = JSON.parse(jsonMatch[0]);
 
-  // Validate parsed result
   if (
     typeof parsed.amount !== 'number' ||
     parsed.amount <= 0 ||
@@ -97,6 +159,31 @@ Respond ONLY with a valid JSON object (no markdown, no explanation):
   }
 
   return parsed;
+}
+
+export async function parseTransactionWithAI(input: string): Promise<ParsedTransaction> {
+  if (useRouterProvider) {
+    return parseWithRouter(input);
+  }
+
+  if (!GEMINI_API_KEY) {
+    throw new Error(
+      'AI provider is not configured. Add EXPO_PUBLIC_9ROUTER_URL and EXPO_PUBLIC_9ROUTER_API_KEY to your .env file, or set EXPO_PUBLIC_GEMINI_API_KEY for Gemini.'
+    );
+  }
+
+  return parseWithGemini(input);
+}
+
+/**
+ * Check if the AI provider is configured
+ */
+export function isAiProviderConfigured(): boolean {
+  return useRouterProvider || !!GEMINI_API_KEY;
+}
+
+export function isRouterConfigured(): boolean {
+  return useRouterProvider;
 }
 
 /**

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Transaction } from '@/database/models';
-import * as realmService from '@/services/realmService';
+import * as dbService from '@/services/dbService';
 
 interface TransactionState {
   transactions: Transaction[];
@@ -21,7 +21,7 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
   loadFromDb: async () => {
     set({ isLoading: true });
     try {
-      const transactions = await realmService.getAllTransactions();
+      const transactions = await dbService.getAllTransactions();
       set({ transactions });
     } finally {
       set({ isLoading: false });
@@ -29,21 +29,21 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
   },
 
   addTransaction: async (transaction: Transaction) => {
-    await realmService.addTransaction(transaction);
+    await dbService.addTransaction(transaction);
     set((state) => ({
       transactions: [...state.transactions, transaction],
     }));
   },
 
   removeTransaction: async (id: string) => {
-    await realmService.deleteTransaction(id);
+    await dbService.deleteTransaction(id);
     set((state) => ({
       transactions: state.transactions.filter((t) => t.id !== id),
     }));
   },
 
   updateTransaction: async (id: string, updates: Partial<Transaction>) => {
-    await realmService.updateTransaction(id, updates);
+    await dbService.updateTransaction(id, updates);
     set((state) => ({
       transactions: state.transactions.map((t) => (t.id === id ? { ...t, ...updates } : t)),
     }));
@@ -61,7 +61,7 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
 
   clearTransactions: async () => {
     const { transactions } = get();
-    await Promise.all(transactions.map((t) => realmService.deleteTransaction(t.id)));
+    await Promise.all(transactions.map((t) => dbService.deleteTransaction(t.id)));
     set({ transactions: [] });
   },
 }));

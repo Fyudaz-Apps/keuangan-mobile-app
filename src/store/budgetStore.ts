@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Budget } from '@/database/models';
-import * as realmService from '@/services/realmService';
+import * as dbService from '@/services/dbService';
 
 interface BudgetState {
   budgets: Budget[];
@@ -20,7 +20,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   loadFromDb: async () => {
     set({ isLoading: true });
     try {
-      const budgets = await realmService.getAllBudgets();
+      const budgets = await dbService.getAllBudgets();
       set({ budgets });
     } finally {
       set({ isLoading: false });
@@ -28,21 +28,21 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   },
 
   addBudget: async (budget: Budget) => {
-    await realmService.addBudget(budget);
+    await dbService.addBudget(budget);
     set((state) => ({
       budgets: [...state.budgets, budget],
     }));
   },
 
   removeBudget: async (id: string) => {
-    await realmService.deleteBudget(id);
+    await dbService.deleteBudget(id);
     set((state) => ({
       budgets: state.budgets.filter((b) => b.id !== id),
     }));
   },
 
   updateBudget: async (id: string, updates: Partial<Budget>) => {
-    await realmService.updateBudget(id, updates);
+    await dbService.updateBudget(id, updates);
     set((state) => ({
       budgets: state.budgets.map((b) => (b.id === id ? { ...b, ...updates } : b)),
     }));
@@ -55,7 +55,7 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
 
   clearBudgets: async () => {
     const { budgets } = get();
-    await Promise.all(budgets.map((b) => realmService.deleteBudget(b.id)));
+    await Promise.all(budgets.map((b) => dbService.deleteBudget(b.id)));
     set({ budgets: [] });
   },
 }));
