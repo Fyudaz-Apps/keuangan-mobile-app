@@ -65,11 +65,12 @@ Aplikasi finansial **standalone, offline-first** di iOS dan Android. Semua data 
 - Kalau Firebase belum dikonfigurasi (`.env` kosong) atau platform web: gate di-skip (app langsung terbuka)
 
 #### Navigation & UI
-- Bottom tab: Dashboard → Transactions → Categories → Budgets → Settings
+- Bottom tab: Dashboard  Transactions  Categories  Budgets  Settings
 - `StyleSheet` (tanpa NativeWind), brand color primary `#208AEF`
 - `SafeAreaView` dari `react-native-safe-area-context`
 - Dark mode via palette `src/constants/theme.ts` + `useTheme()`
 - i18n id/en via `src/i18n/`
+- UI fintech-style (referensi FinEase): kartu radius 20 + shadow lembut, hero balance card gradient di Dashboard, chip pill, tombol FAB "+", tab bar rounded-top dengan pill aktif, tipografi judul layar 26/700
 
 ---
 

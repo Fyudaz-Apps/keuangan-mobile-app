@@ -8,13 +8,15 @@ import { useT } from '@/i18n';
 import AddTransactionModal from '@/components/AddTransactionModal';
 
 export default function TransactionsScreen() {
-  const { transactions, removeTransaction } = useTransactionStore();
+  const { transactions, removeTransaction, removeTransactions } = useTransactionStore();
   const { categories } = useCategoryStore();
   const colors = useTheme();
   const t = useT();
   const styles = createStyles(colors);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
 
   const categoryName = (name: string) => categories.find((c) => c.name === name)?.name ?? name;
 
@@ -32,6 +34,31 @@ export default function TransactionsScreen() {
     setShowAddModal(true);
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === sorted.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sorted.map((tx) => tx.id)));
+    }
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
   const handleDelete = (tx: Transaction) => {
     Alert.alert(
       t('deleteTransactionTitle'),
@@ -47,14 +74,63 @@ export default function TransactionsScreen() {
     );
   };
 
+  const handleDeleteSelected = () => {
+    const count = selectedIds.size;
+    Alert.alert(
+      t('deleteSelectedTitle').replace('{count}', count.toString()),
+      t('deleteSelectedMsg').replace('{count}', count.toString()),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('deleteSelected'),
+          style: 'destructive',
+          onPress: () => {
+            removeTransactions([...selectedIds]);
+            exitSelectMode();
+          },
+        },
+      ]
+    );
+  };
+
+  const selectedCount = selectedIds.size;
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t('transactions')}</Text>
-        <TouchableOpacity style={styles.addButton} onPress={openAdd}>
-          <Text style={styles.addButtonText}>{t('add')}</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          {selectMode ? (
+            <TouchableOpacity onPress={exitSelectMode}>
+              <Text style={styles.cancelText}>{t('cancel')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => setSelectMode(true)}>
+              <Text style={styles.selectText}>{t('selectMode')}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.addButton} onPress={openAdd}>
+            <Text style={styles.addButtonText}>{t('add')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {selectMode && sorted.length > 0 && (
+        <View style={styles.selectBar}>
+          <TouchableOpacity onPress={toggleSelectAll}>
+            <Text style={styles.selectAllText}>
+              {selectedCount === sorted.length ? t('deselectAll') : t('selectAll')}
+            </Text>
+          </TouchableOpacity>
+          {selectedCount > 0 && (
+            <TouchableOpacity onPress={handleDeleteSelected}>
+              <Text style={styles.deleteSelectedText}>
+                {t('deleteSelected')} ({selectedCount})
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       <FlatList
         data={sorted}
@@ -63,6 +139,15 @@ export default function TransactionsScreen() {
         ListEmptyComponent={<Text style={styles.emptyText}>{t('emptyTransactions')}</Text>}
         renderItem={({ item }) => (
           <View style={styles.row}>
+            {selectMode && (
+              <TouchableOpacity onPress={() => toggleSelect(item.id)} style={styles.checkbox}>
+                <View
+                  style={[styles.checkboxBox, selectedIds.has(item.id) && styles.checkboxChecked]}
+                >
+                  {selectedIds.has(item.id) && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+              </TouchableOpacity>
+            )}
             <View style={styles.rowInfo}>
               <Text style={styles.rowName}>{item.description}</Text>
               <Text style={styles.rowSub}>
@@ -77,14 +162,16 @@ export default function TransactionsScreen() {
             >
               {item.type === 'income' ? '+' : '-'} Rp {item.amount.toLocaleString()}
             </Text>
-            <View style={styles.rowActions}>
-              <TouchableOpacity onPress={() => openEdit(item)}>
-                <Text style={styles.editText}>{t('edit')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDelete(item)}>
-                <Text style={styles.deleteText}>{t('delete')}</Text>
-              </TouchableOpacity>
-            </View>
+            {!selectMode && (
+              <View style={styles.rowActions}>
+                <TouchableOpacity onPress={() => openEdit(item)}>
+                  <Text style={styles.editText}>{t('edit')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDelete(item)}>
+                  <Text style={styles.deleteText}>{t('delete')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
       />
@@ -105,15 +192,20 @@ const createStyles = (colors: Theme) =>
       backgroundColor: colors.screen,
     },
     header: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 20,
       paddingVertical: 16,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
     headerTitle: {
-      fontSize: 28,
-      fontWeight: 'bold',
+      fontSize: 26,
+      fontWeight: '700',
       color: colors.text,
     },
     addButton: {
@@ -125,6 +217,34 @@ const createStyles = (colors: Theme) =>
     addButtonText: {
       color: '#fff',
       fontSize: 14,
+      fontWeight: '600',
+    },
+    selectText: {
+      color: colors.primary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    cancelText: {
+      color: colors.textMuted,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    selectBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+      backgroundColor: colors.backgroundElement,
+    },
+    selectAllText: {
+      fontSize: 13,
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    deleteSelectedText: {
+      fontSize: 13,
+      color: colors.danger,
       fontWeight: '600',
     },
     listContent: {
@@ -143,6 +263,27 @@ const createStyles = (colors: Theme) =>
       borderRadius: 8,
       padding: 12,
       marginBottom: 8,
+    },
+    checkbox: {
+      marginRight: 10,
+    },
+    checkboxBox: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: colors.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkboxChecked: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    checkmark: {
+      color: '#fff',
+      fontSize: 13,
+      fontWeight: 'bold',
     },
     rowInfo: {
       flex: 1,

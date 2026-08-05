@@ -1,7 +1,8 @@
 import React from 'react';
+import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context'; // 1. Import hook safe area
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useT } from '@/i18n';
 import { TabParamList } from './types';
@@ -14,7 +15,6 @@ import SettingsScreen from '@/screens/SettingsScreen';
 const Tab = createBottomTabNavigator<TabParamList>();
 
 export function BottomTabNavigator() {
-  // 2. Ambil nilai inset bawah dari layar HP
   const insets = useSafeAreaInsets();
   const colors = useTheme();
   const t = useT();
@@ -24,16 +24,23 @@ export function BottomTabNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          // 3. Tambahkan inset.bottom ke padding agar naik di atas tombol navigasi sistem
+          backgroundColor: colors.screen,
+          borderTopWidth: 0,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
-          height: 60 + (insets.bottom > 0 ? insets.bottom : 0),
+          height: 64 + (insets.bottom > 0 ? insets.bottom : 0),
           paddingTop: 8,
+          shadowColor: colors.text,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.05,
+          shadowRadius: 16,
+          elevation: 10,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '500', paddingBottom: 2 },
+        tabBarItemStyle: { paddingVertical: 2 },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
@@ -57,7 +64,18 @@ export function BottomTabNavigator() {
               iconName = 'square';
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return (
+            <View
+              style={[
+                styles.iconPill,
+                {
+                  backgroundColor: focused ? colors.primary : 'transparent',
+                },
+              ]}
+            >
+              <Ionicons name={iconName} size={size} color={focused ? '#ffffff' : color} />
+            </View>
+          );
         },
       })}
     >
@@ -104,3 +122,13 @@ export function BottomTabNavigator() {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  iconPill: {
+    width: 40,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

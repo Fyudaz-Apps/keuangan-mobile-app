@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, ScrollView, StyleSheet, Text, Dimensions, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { PieChart, BarChart } from 'react-native-chart-kit';
 import { useTransactionStore, useCategoryStore, useBudgetStore } from '@/store';
 import { Card, Button } from '@/components/ui';
@@ -72,6 +74,15 @@ export default function DashboardScreen() {
     [transactions, period, activePeriod.buckets]
   );
 
+  const comparison = useMemo(() => {
+    const { totalIncome, totalExpense } = summary;
+    const max = Math.max(totalIncome, totalExpense, 1);
+    const incomePct = Math.round((totalIncome / max) * 100);
+    const expensePct = Math.round((totalExpense / max) * 100);
+    const expenseOfIncome = totalIncome > 0 ? Math.round((totalExpense / totalIncome) * 100) : null;
+    return { max, incomePct, expensePct, expenseOfIncome };
+  }, [summary]);
+
   const barLabels = trendData.map((b) => b.label);
   const barDataset = {
     labels: barLabels,
@@ -83,7 +94,7 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{t('dashboard')}</Text>
         </View>
@@ -107,34 +118,66 @@ export default function DashboardScreen() {
           ))}
         </View>
 
-        <Card title={`${t('summary')} — ${t(activePeriod.label)}`} style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>{t('totalIncome')}</Text>
-              <Text style={[styles.summaryValue, { color: colors.success }]}>
-                Rp {summary.totalIncome.toLocaleString()}
-              </Text>
+        <LinearGradient
+          colors={['#208AEF', '#5FB4FF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <Text style={styles.heroLabel}>{t('balance')}</Text>
+          <Text style={styles.heroBalance}>Rp {summary.balance.toLocaleString()}</Text>
+          <View style={styles.heroRow}>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatLabel}>{t('income')}</Text>
+              <Text style={styles.heroStatValue}>+ Rp {summary.totalIncome.toLocaleString()}</Text>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>{t('totalExpense')}</Text>
-              <Text style={[styles.summaryValue, { color: colors.danger }]}>
-                Rp {summary.totalExpense.toLocaleString()}
-              </Text>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatLabel}>{t('expense')}</Text>
+              <Text style={styles.heroStatValue}>- Rp {summary.totalExpense.toLocaleString()}</Text>
             </View>
           </View>
-          <View style={styles.balanceContainer}>
-            <Text style={styles.balanceLabel}>{t('balance')}</Text>
-            <Text
-              style={[
-                styles.balanceValue,
-                {
-                  color: summary.balance >= 0 ? colors.success : colors.danger,
-                },
-              ]}
-            >
-              Rp {summary.balance.toLocaleString()}
+        </LinearGradient>
+
+        <Card title={`${t('incomeVsExpense')} — ${t(activePeriod.label)}`} style={styles.statsCard}>
+          <View style={styles.compareItem}>
+            <View style={styles.compareLabelRow}>
+              <Text style={styles.summaryLabel}>{t('income')}</Text>
+              <Text style={styles.summaryLabel}>{comparison.incomePct}%</Text>
+            </View>
+            <View style={styles.compareTrack}>
+              <View
+                style={[
+                  styles.compareFill,
+                  {
+                    width: `${comparison.incomePct}%`,
+                    backgroundColor: colors.success,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+          <View style={styles.compareItem}>
+            <View style={styles.compareLabelRow}>
+              <Text style={styles.summaryLabel}>{t('expense')}</Text>
+              <Text style={styles.summaryLabel}>{comparison.expensePct}%</Text>
+            </View>
+            <View style={styles.compareTrack}>
+              <View
+                style={[
+                  styles.compareFill,
+                  {
+                    width: `${comparison.expensePct}%`,
+                    backgroundColor: colors.danger,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+          {comparison.expenseOfIncome !== null && (
+            <Text style={styles.compareRatio}>
+              {t('expenseOfIncome').replace('{percent}', comparison.expenseOfIncome.toString())}
             </Text>
-          </View>
+          )}
         </Card>
 
         <Card title={t('quickStats')} style={styles.statsCard}>
@@ -230,6 +273,14 @@ export default function DashboardScreen() {
         )}
       </ScrollView>
 
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={() => setShowAddModal(true)}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={30} color="#ffffff" />
+      </TouchableOpacity>
+
       <AddTransactionModal visible={showAddModal} onClose={() => setShowAddModal(false)} />
     </SafeAreaView>
   );
@@ -241,25 +292,29 @@ const createStyles = (colors: Theme) =>
       flex: 1,
       backgroundColor: colors.screen,
     },
+    content: {
+      paddingBottom: 96,
+    },
     header: {
-      paddingHorizontal: 16,
-      paddingVertical: 16,
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 8,
     },
     headerTitle: {
-      fontSize: 28,
-      fontWeight: 'bold',
+      fontSize: 26,
+      fontWeight: '700',
       color: colors.text,
     },
     periodRow: {
       flexDirection: 'row',
       gap: 8,
-      marginHorizontal: 16,
+      marginHorizontal: 20,
       marginBottom: 8,
     },
     periodChip: {
       paddingVertical: 8,
-      paddingHorizontal: 14,
-      borderRadius: 20,
+      paddingHorizontal: 16,
+      borderRadius: 999,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.chipBg,
@@ -270,49 +325,100 @@ const createStyles = (colors: Theme) =>
     },
     periodChipText: {
       fontSize: 13,
+      fontWeight: '500',
       color: colors.text,
     },
     periodChipTextActive: {
       color: '#fff',
       fontWeight: '600',
     },
-    summaryCard: {
+    hero: {
+      borderRadius: 24,
+      marginHorizontal: 16,
       marginTop: 8,
+      padding: 20,
+      shadowColor: '#208AEF',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.25,
+      shadowRadius: 16,
+      elevation: 6,
     },
-    summaryRow: {
+    heroLabel: {
+      fontSize: 13,
+      color: 'rgba(255,255,255,0.75)',
+    },
+    heroBalance: {
+      fontSize: 30,
+      fontWeight: '700',
+      color: '#ffffff',
+      marginVertical: 8,
+    },
+    heroRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 16,
+      gap: 12,
+      marginTop: 4,
     },
-    summaryItem: {
+    heroStat: {
       flex: 1,
+      backgroundColor: 'rgba(255,255,255,0.14)',
+      borderRadius: 16,
+      padding: 12,
+    },
+    heroStatLabel: {
+      fontSize: 12,
+      color: 'rgba(255,255,255,0.7)',
+      marginBottom: 4,
+    },
+    heroStatValue: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: '#ffffff',
+    },
+    statsCard: {
+      marginTop: 12,
+    },
+    compareItem: {
+      marginBottom: 12,
     },
     summaryLabel: {
       fontSize: 12,
       color: colors.textMuted,
       marginBottom: 4,
     },
-    summaryValue: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: colors.text,
-    },
-    balanceContainer: {
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-    },
-    balanceLabel: {
-      fontSize: 12,
-      color: colors.textMuted,
+    compareLabelRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
       marginBottom: 4,
     },
-    balanceValue: {
-      fontSize: 24,
-      fontWeight: 'bold',
+    compareTrack: {
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: colors.chipBg,
+      overflow: 'hidden',
     },
-    statsCard: {
-      marginTop: 12,
+    compareFill: {
+      height: '100%',
+      borderRadius: 5,
+    },
+    compareRatio: {
+      marginTop: 4,
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    fab: {
+      position: 'absolute',
+      right: 20,
+      bottom: 24,
+      width: 58,
+      height: 58,
+      borderRadius: 29,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#208AEF',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.35,
+      shadowRadius: 12,
+      elevation: 8,
     },
     statsGrid: {
       flexDirection: 'row',

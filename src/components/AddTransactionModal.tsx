@@ -48,7 +48,7 @@ export default function AddTransactionModal({
   onClose,
   editing = null,
 }: AddTransactionModalProps) {
-  const { addTransaction, updateTransaction } = useTransactionStore();
+  const { addTransaction, updateTransaction, findDuplicate } = useTransactionStore();
   const { categories } = useCategoryStore();
   const colors = useTheme();
   const t = useT();
@@ -116,34 +116,65 @@ export default function AddTransactionModal({
 
     const now = new Date();
     const trimmedNotes = notes.trim() || undefined;
+    const trimmedDescription = description.trim();
+
+    const save = () => {
+      if (editing) {
+        updateTransaction(editing.id, {
+          amount: numericAmount,
+          description: trimmedDescription,
+          category,
+          type,
+          date,
+          notes: trimmedNotes,
+          updatedAt: now,
+        });
+      } else {
+        addTransaction({
+          id: generateId(),
+          amount: numericAmount,
+          description: trimmedDescription,
+          category,
+          type,
+          date,
+          notes: trimmedNotes,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      resetForm();
+      onClose();
+      Alert.alert(t('success'), t('transactionSaved'));
+    };
 
     if (editing) {
-      updateTransaction(editing.id, {
-        amount: numericAmount,
-        description: description.trim(),
-        category,
-        type,
-        date,
-        notes: trimmedNotes,
-        updatedAt: now,
-      });
-    } else {
-      addTransaction({
-        id: generateId(),
-        amount: numericAmount,
-        description: description.trim(),
-        category,
-        type,
-        date,
-        notes: trimmedNotes,
-        createdAt: now,
-        updatedAt: now,
-      });
+      save();
+      return;
     }
 
-    resetForm();
-    onClose();
-    Alert.alert(t('success'), t('transactionSaved'));
+    const duplicate = findDuplicate({
+      amount: numericAmount,
+      description: trimmedDescription,
+      date,
+      type,
+    });
+
+    if (duplicate) {
+      Alert.alert(
+        t('duplicateTransactionTitle'),
+        t('duplicateTransactionMsg').replace('{description}', trimmedDescription),
+        [
+          { text: t('cancel'), style: 'cancel' },
+          {
+            text: t('duplicateTransactionContinue'),
+            onPress: save,
+          },
+        ]
+      );
+      return;
+    }
+
+    save();
   };
 
   const handleAiParse = async () => {

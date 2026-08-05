@@ -89,15 +89,15 @@ const createStyles = (colors: Theme) =>
       backgroundColor: colors.screen,
     },
     header: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 20,
       paddingVertical: 16,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
     headerTitle: {
-      fontSize: 28,
-      fontWeight: 'bold',
+      fontSize: 26,
+      fontWeight: '700',
       color: colors.text,
     },
     addButton: {

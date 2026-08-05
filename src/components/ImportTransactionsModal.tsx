@@ -14,7 +14,7 @@ import { Modal, Input, Button } from '@/components/ui';
 import { useTransactionStore } from '@/store';
 import { useTheme, Theme } from '@/hooks/use-theme';
 import { useT } from '@/i18n';
-import { parseNoteLines, ImportedTransaction } from '@/utils/import';
+import { parseNoteLines, parseVpsExport, ImportedTransaction } from '@/utils/import';
 import { extractSdocxText } from '@/utils/sdocx';
 import { generateId } from '@/utils';
 
@@ -43,8 +43,19 @@ export default function ImportTransactionsModal({
     setImporting(false);
   };
 
+  const parseImportText = (input: string): ImportedTransaction[] => {
+    if (
+      input.includes('|id|') ||
+      input.includes('| id|') ||
+      /^\s*\|[^|]+\|[^|]+\|/.test(input.trim().split('\n')[0] ?? '')
+    ) {
+      return parseVpsExport(input);
+    }
+    return parseNoteLines(input);
+  };
+
   const handleParse = () => {
-    setParsed(parseNoteLines(text));
+    setParsed(parseImportText(text));
   };
 
   const handlePickFiles = async () => {
@@ -76,7 +87,7 @@ export default function ImportTransactionsModal({
 
       const merged = text.trim() ? `${text.trim()}\n${parts.join('\n')}` : parts.join('\n');
       setText(merged);
-      setParsed(parseNoteLines(merged));
+      setParsed(parseImportText(merged));
     } catch (error) {
       console.error('File pick failed:', error);
       Alert.alert(t('error'), t('importFilesError'));
@@ -84,8 +95,8 @@ export default function ImportTransactionsModal({
   };
 
   const handleImport = async () => {
-    const date = new Date(dateText);
-    if (isNaN(date.getTime())) {
+    const fallbackDate = new Date(dateText);
+    if (isNaN(fallbackDate.getTime())) {
       Alert.alert(t('error'), t('importDateInvalid'));
       return;
     }
@@ -104,7 +115,7 @@ export default function ImportTransactionsModal({
           description: item.description,
           category: item.category,
           type: item.type,
-          date,
+          date: item.date ?? fallbackDate,
           notes: item.raw,
           createdAt: now,
           updatedAt: now,
@@ -117,6 +128,8 @@ export default function ImportTransactionsModal({
       setImporting(false);
     }
   };
+
+  const formatDate = (date?: Date) => (date ? date.toLocaleDateString('id-ID') : dateText);
 
   return (
     <Modal visible={visible} onClose={onClose}>
@@ -163,7 +176,7 @@ export default function ImportTransactionsModal({
                     {item.description} · {item.category}
                   </Text>
                   <Text style={styles.rowSub}>
-                    {item.type === 'income' ? t('income') : t('expense')}
+                    {item.type === 'income' ? t('income') : t('expense')} · {formatDate(item.date)}
                   </Text>
                 </View>
                 <Text

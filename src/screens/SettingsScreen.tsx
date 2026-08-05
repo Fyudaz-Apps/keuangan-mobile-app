@@ -41,7 +41,8 @@ export default function SettingsScreen() {
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [cloudBusy, setCloudBusy] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [restoreBusy, setRestoreBusy] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ uid: string; email: string | null } | null>(
     null
   );
@@ -109,7 +110,7 @@ export default function SettingsScreen() {
       Alert.alert(t('error'), t('authRequired'));
       return;
     }
-    setCloudBusy(true);
+    setBackupBusy(true);
     try {
       await backupToCloud(user.uid, { transactions, categories, budgets });
       Alert.alert(
@@ -123,7 +124,7 @@ export default function SettingsScreen() {
       console.error('Backup failed:', error);
       Alert.alert(t('error'), t('backupFailed'));
     } finally {
-      setCloudBusy(false);
+      setBackupBusy(false);
     }
   };
 
@@ -133,7 +134,7 @@ export default function SettingsScreen() {
       Alert.alert(t('error'), t('authRequired'));
       return;
     }
-    setCloudBusy(true);
+    setRestoreBusy(true);
     try {
       const cloud = await fetchCloudData(user.uid);
       if (
@@ -151,7 +152,7 @@ export default function SettingsScreen() {
       console.error('Restore failed:', error);
       Alert.alert(t('error'), t('restoreFailed'));
     } finally {
-      setCloudBusy(false);
+      setRestoreBusy(false);
     }
   };
 
@@ -241,22 +242,22 @@ export default function SettingsScreen() {
                   {t('loggedInAs').replace('{email}', currentUser.email ?? '')}
                 </Text>
                 <Button
-                  title={cloudBusy ? t('cloudBusy') : t('backupToCloud')}
+                  title={backupBusy ? t('backupBusy') : t('backupToCloud')}
                   onPress={handleBackup}
-                  disabled={cloudBusy}
+                  disabled={backupBusy || restoreBusy}
                   style={styles.button}
                 />
                 <Button
-                  title={cloudBusy ? t('cloudBusy') : t('restoreFromCloud')}
+                  title={restoreBusy ? t('restoreBusy') : t('restoreFromCloud')}
                   onPress={handleRestore}
-                  disabled={cloudBusy}
+                  disabled={backupBusy || restoreBusy}
                   variant="secondary"
                   style={styles.button}
                 />
                 <Button
                   title={t('logout')}
                   onPress={handleLogout}
-                  disabled={cloudBusy}
+                  disabled={backupBusy || restoreBusy}
                   variant="danger"
                   style={styles.button}
                 />
@@ -298,6 +299,29 @@ export default function SettingsScreen() {
           visible={showImportModal}
           onClose={() => setShowImportModal(false)}
         />
+
+        <Card style={styles.card}>
+          <Text style={styles.sectionTitle}>{t('dangerZone')}</Text>
+          <Button
+            title={t('clearAllTransactions')}
+            onPress={() => {
+              Alert.alert(t('clearAllTransactions'), t('clearAllTransactionsMsg'), [
+                { text: t('cancel'), style: 'cancel' },
+                {
+                  text: t('delete'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    const { clearTransactions } = useTransactionStore.getState();
+                    await clearTransactions();
+                    Alert.alert(t('success'), t('clearAllTransactionsSuccess'));
+                  },
+                },
+              ]);
+            }}
+            variant="secondary"
+            style={styles.button}
+          />
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -310,12 +334,12 @@ const createStyles = (colors: Theme) =>
       backgroundColor: colors.screen,
     },
     header: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 20,
       paddingVertical: 16,
     },
     headerTitle: {
-      fontSize: 28,
-      fontWeight: 'bold',
+      fontSize: 26,
+      fontWeight: '700',
       color: colors.text,
     },
     card: {
