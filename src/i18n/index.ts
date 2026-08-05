@@ -170,6 +170,10 @@ export const messages: Record<Language, MessageSet> = {
       'Restore {tx} transaksi, {cat} kategori, {budget} budget? Data yang ada akan diganti.',
     localRestoreSuccess: 'Backup berhasil di-restore.',
     localRestoreFailed: 'Restore gagal. File mungkin rusak.',
+    filterByMonthYear: 'Filter Bulan & Tahun',
+    allTransactions: 'Semua Transaksi',
+    clearFilter: 'Hapus Filter',
+    close: 'Tutup',
   },
   en: {
     dashboard: 'Dashboard',
@@ -335,6 +339,10 @@ export const messages: Record<Language, MessageSet> = {
       'Restore {tx} transactions, {cat} categories, {budget} budgets? Existing data will be replaced.',
     localRestoreSuccess: 'Backup restored successfully.',
     localRestoreFailed: 'Restore failed. The file may be corrupted.',
+    filterByMonthYear: 'Filter by Month & Year',
+    allTransactions: 'All Transactions',
+    clearFilter: 'Clear Filter',
+    close: 'Close',
   },
 };
 
