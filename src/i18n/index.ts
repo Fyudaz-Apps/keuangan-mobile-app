@@ -162,6 +162,14 @@ export const messages: Record<Language, MessageSet> = {
     duplicateTransactionMsg: 'Transaksi "{description}" sudah ada. Tetap tambahkan?',
     duplicateTransactionContinue: 'Tetap Tambah',
     importSkippedDuplicates: '{count} transaksi duplikat dilewati.',
+    localBackup: 'Backup Lokal',
+    localBackupExport: 'Export Backup Lokal',
+    localBackupRestore: 'Restore dari Backup Lokal',
+    restoreConfirmTitle: 'Restore Backup',
+    restoreConfirmMsg:
+      'Restore {tx} transaksi, {cat} kategori, {budget} budget? Data yang ada akan diganti.',
+    localRestoreSuccess: 'Backup berhasil di-restore.',
+    localRestoreFailed: 'Restore gagal. File mungkin rusak.',
   },
   en: {
     dashboard: 'Dashboard',
@@ -319,6 +327,14 @@ export const messages: Record<Language, MessageSet> = {
     duplicateTransactionMsg: 'Transaction "{description}" already exists. Add anyway?',
     duplicateTransactionContinue: 'Add Anyway',
     importSkippedDuplicates: '{count} duplicate transactions skipped.',
+    localBackup: 'Local Backup',
+    localBackupExport: 'Export Local Backup',
+    localBackupRestore: 'Restore from Local Backup',
+    restoreConfirmTitle: 'Restore Backup',
+    restoreConfirmMsg:
+      'Restore {tx} transactions, {cat} categories, {budget} budgets? Existing data will be replaced.',
+    localRestoreSuccess: 'Backup restored successfully.',
+    localRestoreFailed: 'Restore failed. The file may be corrupted.',
   },
 };
 

@@ -1,8 +1,16 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
-import { Transaction } from '@/database/models';
+import { Transaction, Category, Budget } from '@/database/models';
 import { csvFromTransactions } from '@/utils/aggregate';
+
+export interface LocalBackup {
+  version: number;
+  exportedAt: string;
+  transactions: Transaction[];
+  categories: Category[];
+  budgets: Budget[];
+}
 
 function htmlFromTransactions(transactions: Transaction[]): string {
   const rows = transactions
@@ -24,4 +32,29 @@ export async function exportTransactionsCsv(transactions: Transaction[]): Promis
 export async function exportTransactionsPdf(transactions: Transaction[]): Promise<void> {
   const { uri } = await Print.printToFileAsync({ html: htmlFromTransactions(transactions) });
   await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Export PDF' });
+}
+
+export async function exportLocalBackup(data: LocalBackup): Promise<void> {
+  const json = JSON.stringify(data, null, 2);
+  const file = new File(
+    Paths.cache,
+    `keuangan-backup-${new Date().toISOString().slice(0, 10)}.json`
+  );
+  file.write(json);
+  await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Backup Lokal' });
+}
+
+export async function importLocalBackup(uri: string): Promise<LocalBackup> {
+  const file = new File(uri);
+  const text = await file.text();
+  const data = JSON.parse(text) as LocalBackup;
+  if (
+    !data ||
+    !Array.isArray(data.transactions) ||
+    !Array.isArray(data.categories) ||
+    !Array.isArray(data.budgets)
+  ) {
+    throw new Error('Format backup tidak valid.');
+  }
+  return data;
 }

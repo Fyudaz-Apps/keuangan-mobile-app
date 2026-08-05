@@ -10,11 +10,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Button, Input } from '@/components/ui';
-import { useAppStore, useTransactionStore } from '@/store';
+import * as DocumentPicker from 'expo-document-picker';
+import { useAppStore, useTransactionStore, useCategoryStore, useBudgetStore } from '@/store';
 import { useTheme, Theme } from '@/hooks/use-theme';
 import { useT } from '@/i18n';
 import { getGeminiKey, setGeminiKey, clearGeminiKey } from '@/services/keyService';
-import { exportTransactionsCsv, exportTransactionsPdf } from '@/services/exportService';
+import {
+  exportTransactionsCsv,
+  exportTransactionsPdf,
+  exportLocalBackup,
+  importLocalBackup,
+} from '@/services/exportService';
 import {
   getCurrentUser,
   subscribeToAuth,
@@ -25,7 +31,6 @@ import {
   isFirebaseConfigured,
 } from '@/services/firebaseService';
 import { mergeCloudIntoLocal } from '@/utils/firebaseSync';
-import { useCategoryStore, useBudgetStore } from '@/store';
 import ImportTransactionsModal from '@/components/ImportTransactionsModal';
 
 const THEME_OPTIONS = ['light', 'dark', 'system'] as const;
@@ -92,6 +97,85 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('Export failed:', error);
       Alert.alert(t('error'), t('exportFailed'));
+    }
+  };
+
+  const handleLocalBackup = async () => {
+    if (transactions.length === 0 && categories.length === 0 && budgets.length === 0) {
+      Alert.alert(t('error'), t('noDataToExport'));
+      return;
+    }
+    try {
+      const backup = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        transactions,
+        categories,
+        budgets,
+      };
+      await exportLocalBackup(backup);
+    } catch (error) {
+      console.error('Local backup failed:', error);
+      Alert.alert(t('error'), t('exportFailed'));
+    }
+  };
+
+  const handleLocalRestore = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/json', 'text/plain', 'application/octet-stream'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+
+      const backup = await importLocalBackup(result.assets[0].uri);
+      const txCount = backup.transactions.length;
+      const catCount = backup.categories.length;
+      const budgetCount = backup.budgets.length;
+
+      Alert.alert(
+        t('restoreConfirmTitle'),
+        t('restoreConfirmMsg')
+          .replace('{tx}', txCount.toString())
+          .replace('{cat}', catCount.toString())
+          .replace('{budget}', budgetCount.toString()),
+        [
+          { text: t('cancel'), style: 'cancel' },
+          {
+            text: t('restore'),
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const { clearTransactions, loadFromDb: loadTx } = useTransactionStore.getState();
+                const { clearCategories, loadFromDb: loadCat } = useCategoryStore.getState();
+                const { clearBudgets, loadFromDb: loadBud } = useBudgetStore.getState();
+                await clearTransactions();
+                await clearCategories();
+                await clearBudgets();
+                for (const tx of backup.transactions) {
+                  await useTransactionStore.getState().addTransaction(tx);
+                }
+                for (const cat of backup.categories) {
+                  await useCategoryStore.getState().addCategory(cat);
+                }
+                for (const budget of backup.budgets) {
+                  await useBudgetStore.getState().addBudget(budget);
+                }
+                await loadTx();
+                await loadCat();
+                await loadBud();
+                Alert.alert(t('success'), t('localRestoreSuccess'));
+              } catch (err) {
+                console.error('Restore failed:', err);
+                Alert.alert(t('error'), t('localRestoreFailed'));
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Restore pick failed:', error);
+      Alert.alert(t('error'), t('localRestoreFailed'));
     }
   };
 
@@ -295,6 +379,21 @@ export default function SettingsScreen() {
           />
         </Card>
 
+        <Card style={styles.card}>
+          <Text style={styles.sectionTitle}>{t('localBackup')}</Text>
+          <Button
+            title={t('localBackupExport')}
+            onPress={handleLocalBackup}
+            style={styles.button}
+          />
+          <Button
+            title={t('localBackupRestore')}
+            onPress={handleLocalRestore}
+            variant="secondary"
+            style={styles.button}
+          />
+        </Card>
+
         <ImportTransactionsModal
           visible={showImportModal}
           onClose={() => setShowImportModal(false)}
@@ -318,7 +417,7 @@ export default function SettingsScreen() {
                 },
               ]);
             }}
-            variant="secondary"
+            variant="danger"
             style={styles.button}
           />
         </Card>
