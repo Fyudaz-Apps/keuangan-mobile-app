@@ -108,7 +108,21 @@ export default function ImportTransactionsModal({
     setImporting(true);
     try {
       const now = new Date();
+      const { findDuplicate } = useTransactionStore.getState();
+      const unique: ImportedTransaction[] = [];
       for (const item of parsed) {
+        const dup = findDuplicate({
+          amount: item.amount,
+          description: item.description,
+          date: item.date ?? fallbackDate,
+          type: item.type,
+        });
+        if (!dup) {
+          unique.push(item);
+        }
+      }
+
+      for (const item of unique) {
         addTransaction({
           id: generateId(),
           amount: item.amount,
@@ -121,7 +135,14 @@ export default function ImportTransactionsModal({
           updatedAt: now,
         });
       }
-      Alert.alert(t('success'), t('importSuccess').replace('{count}', parsed.length.toString()));
+
+      const skipped = parsed.length - unique.length;
+      const message = t('importSuccess').replace('{count}', unique.length.toString());
+      const skipMessage =
+        skipped > 0
+          ? `\n\n${t('importSkippedDuplicates').replace('{count}', skipped.toString())}`
+          : '';
+      Alert.alert(t('success'), message + skipMessage);
       reset();
       onClose();
     } finally {
