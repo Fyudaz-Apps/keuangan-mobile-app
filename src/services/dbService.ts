@@ -6,48 +6,72 @@ let db: SQLite.SQLiteDatabase | null = null;
 function getDb(): SQLite.SQLiteDatabase {
   if (!db) {
     db = SQLite.openDatabaseSync('keuangan.db');
-    initSchema(db);
+    migrateDatabase(db);
   }
   return db;
 }
 
-function initSchema(database: SQLite.SQLiteDatabase): void {
-  database.execSync(`
-    CREATE TABLE IF NOT EXISTS Category (
-      id TEXT PRIMARY KEY NOT NULL,
-      name TEXT NOT NULL,
-      color TEXT NOT NULL,
-      icon TEXT NOT NULL,
-      type TEXT NOT NULL,
-      createdAt TEXT NOT NULL,
-      updatedAt TEXT NOT NULL
-    );
-  `);
-  database.execSync(`
-    CREATE TABLE IF NOT EXISTS "Transaction" (
-      id TEXT PRIMARY KEY NOT NULL,
-      amount REAL NOT NULL,
-      description TEXT NOT NULL,
-      category TEXT NOT NULL,
-      type TEXT NOT NULL,
-      date TEXT NOT NULL,
-      notes TEXT,
-      createdAt TEXT NOT NULL,
-      updatedAt TEXT NOT NULL
-    );
-  `);
-  database.execSync(`
-    CREATE TABLE IF NOT EXISTS Budget (
-      id TEXT PRIMARY KEY NOT NULL,
-      category TEXT NOT NULL,
-      amount REAL NOT NULL,
-      period TEXT NOT NULL,
-      startDate TEXT NOT NULL,
-      endDate TEXT,
-      createdAt TEXT NOT NULL,
-      updatedAt TEXT NOT NULL
-    );
-  `);
+type Migration = (database: SQLite.SQLiteDatabase) => void;
+
+const migrations: Migration[] = [
+  (database) => {
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS Category (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        color TEXT NOT NULL,
+        icon TEXT NOT NULL,
+        type TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      );
+    `);
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS "Transaction" (
+        id TEXT PRIMARY KEY NOT NULL,
+        amount REAL NOT NULL,
+        description TEXT NOT NULL,
+        category TEXT NOT NULL,
+        type TEXT NOT NULL,
+        date TEXT NOT NULL,
+        notes TEXT,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      );
+    `);
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS Budget (
+        id TEXT PRIMARY KEY NOT NULL,
+        category TEXT NOT NULL,
+        amount REAL NOT NULL,
+        period TEXT NOT NULL,
+        startDate TEXT NOT NULL,
+        endDate TEXT,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      );
+    `);
+  },
+];
+
+function migrateDatabase(database: SQLite.SQLiteDatabase): void {
+  const row = database.getFirstSync<{ user_version: number }>('PRAGMA user_version');
+  let version = row?.user_version ?? 0;
+
+  while (version < migrations.length) {
+    const next = version + 1;
+    database.execSync('BEGIN TRANSACTION');
+    try {
+      migrations[version](database);
+      database.execSync(`PRAGMA user_version = ${next}`);
+      database.execSync('COMMIT');
+    } catch (error) {
+      database.execSync('ROLLBACK');
+      console.error(`Migration ${next} failed:`, error);
+      throw error;
+    }
+    version = next;
+  }
 }
 
 export async function closeDb(): Promise<void> {

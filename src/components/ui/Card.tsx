@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle, TextStyle, Text } from 'react-native';
+import { useTheme } from '@/hooks/use-theme';
 
 interface CardProps {
   children: React.ReactNode;
@@ -18,18 +19,20 @@ const Card: React.FC<CardProps> = ({
   padding = 16,
   elevation = 2,
 }) => {
+  const colors = useTheme();
   return (
     <View
       style={[
         styles.card,
         {
+          backgroundColor: colors.card,
           padding,
           elevation,
         },
         style,
       ]}
     >
-      {title && <Text style={[styles.title, titleStyle]}>{title}</Text>}
+      {title && <Text style={[styles.title, { color: colors.text }, titleStyle]}>{title}</Text>}
       {children}
     </View>
   );
@@ -53,7 +56,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
-    color: '#000000',
   },
 });
 

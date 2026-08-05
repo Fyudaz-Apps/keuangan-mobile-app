@@ -1,25 +1,31 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Modal, Input, Button } from '@/components/ui';
 import { useBudgetStore, useCategoryStore } from '@/store';
 import { Budget } from '@/database/models';
+import { useTheme, Theme } from '@/hooks/use-theme';
+import { useT } from '@/i18n';
 import { generateId } from '@/utils';
 
 const PERIODS: { key: Budget['period']; label: string }[] = [
-  { key: 'daily', label: 'Harian' },
-  { key: 'weekly', label: 'Mingguan' },
-  { key: 'monthly', label: 'Bulanan' },
-  { key: 'yearly', label: 'Tahunan' },
+  { key: 'daily', label: 'daily' },
+  { key: 'weekly', label: 'weekly' },
+  { key: 'monthly', label: 'monthly' },
+  { key: 'yearly', label: 'yearly' },
 ];
 
 interface AddBudgetModalProps {
   visible: boolean;
   onClose: () => void;
+  editing?: Budget | null;
 }
 
-export default function AddBudgetModal({ visible, onClose }: AddBudgetModalProps) {
-  const { addBudget } = useBudgetStore();
+export default function AddBudgetModal({ visible, onClose, editing = null }: AddBudgetModalProps) {
+  const { addBudget, updateBudget } = useBudgetStore();
   const { categories } = useCategoryStore();
+  const colors = useTheme();
+  const t = useT();
+  const styles = createStyles(colors);
   const [categoryId, setCategoryId] = useState('');
   const [amount, setAmount] = useState('');
   const [period, setPeriod] = useState<Budget['period']>('monthly');
@@ -30,42 +36,62 @@ export default function AddBudgetModal({ visible, onClose }: AddBudgetModalProps
     setPeriod('monthly');
   };
 
+  useEffect(() => {
+    if (!visible) return;
+    if (editing) {
+      setCategoryId(editing.category);
+      setAmount(editing.amount.toString());
+      setPeriod(editing.period);
+    } else {
+      resetForm();
+    }
+  }, [visible, editing]);
+
   const handleSave = () => {
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
-      Alert.alert('Error', 'Masukkan jumlah yang valid.');
+      Alert.alert(t('error'), t('validAmount'));
       return;
     }
     if (!categoryId) {
-      Alert.alert('Error', 'Pilih kategori.');
+      Alert.alert(t('error'), t('validCategory'));
       return;
     }
 
     const now = new Date();
-    addBudget({
-      id: generateId(),
-      category: categoryId,
-      amount: numericAmount,
-      period,
-      startDate: now,
-      endDate: undefined,
-      createdAt: now,
-      updatedAt: now,
-    });
+    if (editing) {
+      updateBudget(editing.id, {
+        category: categoryId,
+        amount: numericAmount,
+        period,
+        updatedAt: now,
+      });
+    } else {
+      addBudget({
+        id: generateId(),
+        category: categoryId,
+        amount: numericAmount,
+        period,
+        startDate: now,
+        endDate: undefined,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
 
     resetForm();
     onClose();
-    Alert.alert('Berhasil', 'Budget berhasil ditambahkan!');
+    Alert.alert(t('success'), t('budgetSaved'));
   };
 
   return (
     <Modal visible={visible} onClose={onClose}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Tambah Budget</Text>
+        <Text style={styles.title}>{editing ? t('budgetEditTitle') : t('budgetAddTitle')}</Text>
 
-        <Text style={styles.fieldLabel}>Kategori</Text>
+        <Text style={styles.fieldLabel}>{t('categoryLabel')}</Text>
         {categories.length === 0 ? (
-          <Text style={styles.emptyHint}>Belum ada kategori. Tambahkan kategori dulu.</Text>
+          <Text style={styles.emptyHint}>{t('budgetEmptyCategoryHint')}</Text>
         ) : (
           <View style={styles.chipGrid}>
             {categories.map((cat) => (
@@ -83,14 +109,14 @@ export default function AddBudgetModal({ visible, onClose }: AddBudgetModalProps
         )}
 
         <Input
-          label="Jumlah (Rp)"
+          label={t('amountLabel')}
           placeholder="Contoh: 1000000"
           value={amount}
           onChangeText={setAmount}
           keyboardType="numeric"
         />
 
-        <Text style={styles.fieldLabel}>Periode</Text>
+        <Text style={styles.fieldLabel}>{t('periodLabel')}</Text>
         <View style={styles.chipGrid}>
           {PERIODS.map((p) => (
             <TouchableOpacity
@@ -99,16 +125,16 @@ export default function AddBudgetModal({ visible, onClose }: AddBudgetModalProps
               onPress={() => setPeriod(p.key)}
             >
               <Text style={[styles.chipText, period === p.key && styles.chipTextActive]}>
-                {p.label}
+                {t(p.label)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
         <View style={styles.actions}>
-          <Button title="Simpan" onPress={handleSave} style={styles.saveButton} />
+          <Button title={t('save')} onPress={handleSave} style={styles.saveButton} />
           <Button
-            title="Batal"
+            title={t('cancel')}
             onPress={() => {
               resetForm();
               onClose();
@@ -122,60 +148,61 @@ export default function AddBudgetModal({ visible, onClose }: AddBudgetModalProps
   );
 }
 
-const styles = StyleSheet.create({
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 8,
-    color: '#000',
-  },
-  emptyHint: {
-    fontSize: 13,
-    color: '#999',
-    marginBottom: 8,
-  },
-  chipGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
-  },
-  chip: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
-    backgroundColor: '#f9f9f9',
-  },
-  chipActive: {
-    backgroundColor: '#208AEF',
-    borderColor: '#208AEF',
-  },
-  chipText: {
-    fontSize: 13,
-    color: '#555',
-  },
-  chipTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  actions: {
-    marginTop: 8,
-    gap: 8,
-  },
-  saveButton: {
-    marginTop: 4,
-  },
-  cancelButton: {
-    marginTop: 0,
-  },
-});
+const createStyles = (colors: Theme) =>
+  StyleSheet.create({
+    title: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 16,
+      textAlign: 'center',
+    },
+    fieldLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 8,
+      marginTop: 8,
+      color: colors.text,
+    },
+    emptyHint: {
+      fontSize: 13,
+      color: colors.textMuted,
+      marginBottom: 8,
+    },
+    chipGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 8,
+    },
+    chip: {
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.chipBg,
+    },
+    chipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    chipText: {
+      fontSize: 13,
+      color: colors.text,
+    },
+    chipTextActive: {
+      color: '#fff',
+      fontWeight: '600',
+    },
+    actions: {
+      marginTop: 8,
+      gap: 8,
+    },
+    saveButton: {
+      marginTop: 4,
+    },
+    cancelButton: {
+      marginTop: 0,
+    },
+  });

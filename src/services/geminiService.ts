@@ -22,19 +22,13 @@ const DEFAULT_CATEGORIES = [
   'Other',
 ];
 
-/**
- * Parse a natural language text input into a structured transaction
- * using Google Gemini API (direct HTTP fetch).
- */
-export async function parseTransactionWithAI(input: string): Promise<ParsedTransaction> {
-  const apiKey = await getGeminiKey();
-  if (!apiKey) {
-    throw new Error(
-      'Gemini API key is not configured. Add one in Settings or via EXPO_PUBLIC_GEMINI_API_KEY in your .env file.'
-    );
-  }
+export interface GeminiImage {
+  mimeType: string;
+  base64: string;
+}
 
-  const prompt = `You are a financial transaction parser for an Indonesian personal finance app.
+function buildPrompt(input: string): string {
+  return `You are a financial transaction parser for an Indonesian personal finance app.
 Parse the following text into a structured transaction.
 
 Available categories: ${DEFAULT_CATEGORIES.join(', ')}
@@ -50,6 +44,37 @@ Text: "${input}"
 
 Respond ONLY with a valid JSON object (no markdown, no explanation):
 {"amount": <number>, "description": "<string>", "category": "<string>", "type": "<income|expense>"}`;
+}
+
+function buildReceiptPrompt(): string {
+  return `You are a financial transaction parser for an Indonesian personal finance app.
+Read the receipt image and extract the transaction.
+
+Available categories: ${DEFAULT_CATEGORIES.join(', ')}
+
+Rules:
+- "amount" must be a positive number in IDR (Indonesian Rupiah). Use the total amount if present.
+- "type" is "expense" (receipts are expenses).
+- "category" must be one of the available categories listed above. Pick the closest match.
+- "description" should be a concise summary of the store or items.
+
+Respond ONLY with a valid JSON object (no markdown, no explanation):
+{"amount": <number>, "description": "<string>", "category": "<string>", "type": "<income|expense>"}`;
+}
+
+async function callGemini(prompt: string, image?: GeminiImage): Promise<ParsedTransaction> {
+  const apiKey = await getGeminiKey();
+  if (!apiKey) {
+    throw new Error(
+      'Gemini API key is not configured. Add one in Settings or via EXPO_PUBLIC_GEMINI_API_KEY in your .env file.'
+    );
+  }
+
+  const parts: any[] = [];
+  if (image) {
+    parts.push({ inline_data: { mime_type: image.mimeType, data: image.base64 } });
+  }
+  parts.push({ text: prompt });
 
   const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
     method: 'POST',
@@ -59,12 +84,12 @@ Respond ONLY with a valid JSON object (no markdown, no explanation):
     body: JSON.stringify({
       contents: [
         {
-          parts: [{ text: prompt }],
+          parts,
         },
       ],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 256,
+        maxOutputTokens: 512,
       },
     }),
   });
@@ -76,10 +101,8 @@ Respond ONLY with a valid JSON object (no markdown, no explanation):
   }
 
   const data = await response.json();
-
   const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-  // Extract JSON from the response (handle possible markdown wrapping)
   const jsonMatch = textContent.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     throw new Error('Could not parse AI response into a transaction.');
@@ -87,7 +110,6 @@ Respond ONLY with a valid JSON object (no markdown, no explanation):
 
   const parsed: ParsedTransaction = JSON.parse(jsonMatch[0]);
 
-  // Validate parsed result
   if (
     typeof parsed.amount !== 'number' ||
     parsed.amount <= 0 ||
@@ -99,6 +121,21 @@ Respond ONLY with a valid JSON object (no markdown, no explanation):
   }
 
   return parsed;
+}
+
+/**
+ * Parse a natural language text input into a structured transaction
+ * using Google Gemini API (direct HTTP fetch).
+ */
+export async function parseTransactionWithAI(input: string): Promise<ParsedTransaction> {
+  return callGemini(buildPrompt(input));
+}
+
+/**
+ * Parse a receipt image into a structured transaction using Gemini vision.
+ */
+export async function parseReceiptWithAI(image: GeminiImage): Promise<ParsedTransaction> {
+  return callGemini(buildReceiptPrompt(), image);
 }
 
 /**
