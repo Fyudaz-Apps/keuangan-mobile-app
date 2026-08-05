@@ -10,6 +10,8 @@ A mobile personal finance app built with React Native and Expo SDK 54. Track exp
 - **Budgets**: Set and track budgets for different spending categories
 - **Settings**: Configure preferences, including the Gemini API key
 - **Offline Support**: Full offline capability with local SQLite database
+- **Cloud Backup**: Manual Firebase (Firestore) backup/restore with email/password auth (`src/services/firebaseService.ts`)
+- **Login**: App gated behind email/password sign-in (`src/screens/AuthScreen.tsx`)
 
 ## Project Structure
 
@@ -43,6 +45,7 @@ keuangan-mobile-app/
 - **Language**: TypeScript
 - **State Management**: Zustand
 - **Database**: expo-sqlite (local, offline-first)
+- **Cloud backup**: Firebase JS SDK v12 (Firestore + Auth email/password, `@react-native-async-storage/async-storage` for auth persistence)
 - **Navigation**: React Navigation (bottom tabs + native stack)
 - **Code Quality**: ESLint (flat config) + Prettier
 

@@ -8,7 +8,9 @@ interface TransactionState {
   loadFromDb: () => Promise<void>;
   addTransaction: (transaction: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
+  removeTransactions: (ids: string[]) => Promise<void>;
   updateTransaction: (id: string, transaction: Partial<Transaction>) => Promise<void>;
+  findDuplicate: (transaction: Partial<Transaction>) => Transaction | undefined;
   getTransactionsByCategory: (categoryId: string) => Transaction[];
   getTransactionsByDateRange: (startDate: Date, endDate: Date) => Transaction[];
   clearTransactions: () => Promise<void>;
@@ -42,11 +44,32 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
     }));
   },
 
+  removeTransactions: async (ids: string[]) => {
+    const idSet = new Set(ids);
+    await Promise.all(ids.map((id) => dbService.deleteTransaction(id)));
+    set((state) => ({
+      transactions: state.transactions.filter((t) => !idSet.has(t.id)),
+    }));
+  },
+
   updateTransaction: async (id: string, updates: Partial<Transaction>) => {
     await dbService.updateTransaction(id, updates);
     set((state) => ({
       transactions: state.transactions.map((t) => (t.id === id ? { ...t, ...updates } : t)),
     }));
+  },
+
+  findDuplicate: (transaction: Partial<Transaction>) => {
+    const { amount, description, date, type } = transaction;
+    if (amount == null || !description || !date || !type) return undefined;
+    const d = new Date(date).toDateString();
+    return get().transactions.find(
+      (t) =>
+        t.amount === amount &&
+        t.type === type &&
+        t.description.toLowerCase() === description.toLowerCase() &&
+        new Date(t.date).toDateString() === d
+    );
   },
 
   getTransactionsByCategory: (categoryId: string) => {

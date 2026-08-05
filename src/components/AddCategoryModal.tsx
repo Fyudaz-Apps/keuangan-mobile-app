@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Modal, Input, Button } from '@/components/ui';
 import { useCategoryStore } from '@/store';
+import { Category } from '@/database/models';
+import { useTheme, Theme } from '@/hooks/use-theme';
+import { useT } from '@/i18n';
 import { generateId } from '@/utils';
 
 const COLORS = ['#ff6b6b', '#ffa502', '#4caf50', '#208AEF', '#a55eea', '#666666'];
@@ -21,10 +24,18 @@ const ICONS = [
 interface AddCategoryModalProps {
   visible: boolean;
   onClose: () => void;
+  editing?: Category | null;
 }
 
-export default function AddCategoryModal({ visible, onClose }: AddCategoryModalProps) {
-  const { addCategory } = useCategoryStore();
+export default function AddCategoryModal({
+  visible,
+  onClose,
+  editing = null,
+}: AddCategoryModalProps) {
+  const { addCategory, updateCategory } = useCategoryStore();
+  const colors = useTheme();
+  const t = useT();
+  const styles = createStyles(colors);
   const [name, setName] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [color, setColor] = useState(COLORS[0]);
@@ -37,32 +48,54 @@ export default function AddCategoryModal({ visible, onClose }: AddCategoryModalP
     setIcon(ICONS[0]);
   };
 
+  useEffect(() => {
+    if (!visible) return;
+    if (editing) {
+      setName(editing.name);
+      setType(editing.type);
+      setColor(editing.color);
+      setIcon(editing.icon);
+    } else {
+      resetForm();
+    }
+  }, [visible, editing]);
+
   const handleSave = () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'Masukkan nama kategori.');
+      Alert.alert(t('error'), t('validCategoryName'));
       return;
     }
 
     const now = new Date();
-    addCategory({
-      id: generateId(),
-      name: name.trim(),
-      color,
-      icon,
-      type,
-      createdAt: now,
-      updatedAt: now,
-    });
+    if (editing) {
+      updateCategory(editing.id, {
+        name: name.trim(),
+        color,
+        icon,
+        type,
+        updatedAt: now,
+      });
+    } else {
+      addCategory({
+        id: generateId(),
+        name: name.trim(),
+        color,
+        icon,
+        type,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
 
     resetForm();
     onClose();
-    Alert.alert('Berhasil', 'Kategori berhasil ditambahkan!');
+    Alert.alert(t('success'), t('categorySaved'));
   };
 
   return (
     <Modal visible={visible} onClose={onClose}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Tambah Kategori</Text>
+        <Text style={styles.title}>{editing ? t('categoryEditTitle') : t('categoryAddTitle')}</Text>
 
         <View style={styles.typeToggle}>
           <TouchableOpacity
@@ -72,7 +105,7 @@ export default function AddCategoryModal({ visible, onClose }: AddCategoryModalP
             <Text
               style={[styles.typeButtonText, type === 'expense' && styles.typeButtonTextActive]}
             >
-              💸 Pengeluaran
+              💸 {t('expense')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -80,19 +113,19 @@ export default function AddCategoryModal({ visible, onClose }: AddCategoryModalP
             onPress={() => setType('income')}
           >
             <Text style={[styles.typeButtonText, type === 'income' && styles.typeButtonTextActive]}>
-              💰 Pemasukan
+              💰 {t('income')}
             </Text>
           </TouchableOpacity>
         </View>
 
         <Input
-          label="Nama Kategori"
-          placeholder="Contoh: Transportasi"
+          label={t('categoryNameLabel')}
+          placeholder={t('categoryNamePlaceholder')}
           value={name}
           onChangeText={setName}
         />
 
-        <Text style={styles.fieldLabel}>Warna</Text>
+        <Text style={styles.fieldLabel}>{t('colorLabel')}</Text>
         <View style={styles.optionRow}>
           {COLORS.map((c) => (
             <TouchableOpacity
@@ -107,7 +140,7 @@ export default function AddCategoryModal({ visible, onClose }: AddCategoryModalP
           ))}
         </View>
 
-        <Text style={styles.fieldLabel}>Ikon</Text>
+        <Text style={styles.fieldLabel}>{t('iconLabel')}</Text>
         <View style={styles.iconGrid}>
           {ICONS.map((i) => (
             <TouchableOpacity
@@ -121,9 +154,9 @@ export default function AddCategoryModal({ visible, onClose }: AddCategoryModalP
         </View>
 
         <View style={styles.actions}>
-          <Button title="Simpan" onPress={handleSave} style={styles.saveButton} />
+          <Button title={t('save')} onPress={handleSave} style={styles.saveButton} />
           <Button
-            title="Batal"
+            title={t('cancel')}
             onPress={() => {
               resetForm();
               onClose();
@@ -137,94 +170,95 @@ export default function AddCategoryModal({ visible, onClose }: AddCategoryModalP
   );
 }
 
-const styles = StyleSheet.create({
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  typeToggle: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    gap: 8,
-  },
-  typeButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
-    alignItems: 'center',
-  },
-  typeButtonActiveExpense: {
-    backgroundColor: '#ffe0e0',
-    borderColor: '#ff4444',
-  },
-  typeButtonActiveIncome: {
-    backgroundColor: '#e0ffe0',
-    borderColor: '#44bb44',
-  },
-  typeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  typeButtonTextActive: {
-    color: '#000',
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 8,
-    color: '#000',
-  },
-  optionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 8,
-  },
-  colorDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  colorDotActive: {
-    borderWidth: 3,
-    borderColor: '#000',
-  },
-  iconGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
-  },
-  iconChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
-    backgroundColor: '#f9f9f9',
-  },
-  iconChipActive: {
-    backgroundColor: '#208AEF',
-    borderColor: '#208AEF',
-  },
-  iconText: {
-    fontSize: 13,
-    color: '#555',
-  },
-  actions: {
-    marginTop: 8,
-    gap: 8,
-  },
-  saveButton: {
-    marginTop: 4,
-  },
-  cancelButton: {
-    marginTop: 0,
-  },
-});
+const createStyles = (colors: Theme) =>
+  StyleSheet.create({
+    title: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 16,
+      textAlign: 'center',
+    },
+    typeToggle: {
+      flexDirection: 'row',
+      marginBottom: 12,
+      gap: 8,
+    },
+    typeButton: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+    },
+    typeButtonActiveExpense: {
+      backgroundColor: '#ffe0e0',
+      borderColor: colors.danger,
+    },
+    typeButtonActiveIncome: {
+      backgroundColor: '#e0ffe0',
+      borderColor: '#44bb44',
+    },
+    typeButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    typeButtonTextActive: {
+      color: colors.text,
+    },
+    fieldLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 8,
+      marginTop: 8,
+      color: colors.text,
+    },
+    optionRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginBottom: 8,
+    },
+    colorDot: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+    },
+    colorDotActive: {
+      borderWidth: 3,
+      borderColor: colors.text,
+    },
+    iconGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 8,
+    },
+    iconChip: {
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.chipBg,
+    },
+    iconChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    iconText: {
+      fontSize: 13,
+      color: colors.text,
+    },
+    actions: {
+      marginTop: 8,
+      gap: 8,
+    },
+    saveButton: {
+      marginTop: 4,
+    },
+    cancelButton: {
+      marginTop: 0,
+    },
+  });

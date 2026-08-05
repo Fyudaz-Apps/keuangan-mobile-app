@@ -85,6 +85,91 @@ export function getEndOfWeek(date: Date = new Date()): Date {
   return end;
 }
 
+export type PeriodKey = 'day' | 'week' | 'month' | 'year';
+
+/**
+ * Get start of day
+ */
+export function getStartOfDay(date: Date = new Date()): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Get end of day
+ */
+export function getEndOfDay(date: Date = new Date()): Date {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+/**
+ * Get start of year
+ */
+export function getStartOfYear(date: Date = new Date()): Date {
+  return new Date(date.getFullYear(), 0, 1);
+}
+
+/**
+ * Get end of year
+ */
+export function getEndOfYear(date: Date = new Date()): Date {
+  return new Date(date.getFullYear(), 11, 31, 23, 59, 59, 999);
+}
+
+/**
+ * Get start of period (inclusive) for a given period key
+ */
+export function getStartOfPeriod(period: PeriodKey, date: Date = new Date()): Date {
+  switch (period) {
+    case 'day':
+      return getStartOfDay(date);
+    case 'week':
+      return getStartOfWeek(date);
+    case 'month':
+      return getStartOfMonth(date);
+    case 'year':
+      return getStartOfYear(date);
+  }
+}
+
+/**
+ * Get start of next period (exclusive end boundary)
+ */
+export function addPeriod(period: PeriodKey, date: Date, delta: number): Date {
+  const d = new Date(date);
+  switch (period) {
+    case 'day':
+      d.setDate(d.getDate() + delta);
+      break;
+    case 'week':
+      d.setDate(d.getDate() + delta * 7);
+      break;
+    case 'month':
+      d.setMonth(d.getMonth() + delta);
+      break;
+    case 'year':
+      d.setFullYear(d.getFullYear() + delta);
+      break;
+  }
+  return d;
+}
+
+/**
+ * Get inclusive [start, end] range for a period
+ */
+export function getPeriodRange(
+  period: PeriodKey,
+  date: Date = new Date()
+): { start: Date; end: Date } {
+  const start = getStartOfPeriod(period, date);
+  const end = addPeriod(period, start, 1);
+  end.setMilliseconds(end.getMilliseconds() - 1);
+  return { start, end };
+}
+
 /**
  * Calculate days difference
  */

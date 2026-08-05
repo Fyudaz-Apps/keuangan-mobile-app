@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,16 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import { Modal, Input, Button } from '@/components/ui';
 import { useTransactionStore, useCategoryStore } from '@/store';
+import { Transaction } from '@/database/models';
+import { useTheme, Theme } from '@/hooks/use-theme';
+import { useT } from '@/i18n';
 import {
   parseTransactionWithAI,
+  parseReceiptWithAI,
   isGeminiConfigured,
   ParsedTransaction,
 } from '@/services/geminiService';
@@ -34,19 +40,28 @@ const AI_CATEGORY_MAP: Record<string, string> = {
 interface AddTransactionModalProps {
   visible: boolean;
   onClose: () => void;
+  editing?: Transaction | null;
 }
 
-export default function AddTransactionModal({ visible, onClose }: AddTransactionModalProps) {
-  const { addTransaction } = useTransactionStore();
+export default function AddTransactionModal({
+  visible,
+  onClose,
+  editing = null,
+}: AddTransactionModalProps) {
+  const { addTransaction, updateTransaction, findDuplicate } = useTransactionStore();
   const { categories } = useCategoryStore();
+  const colors = useTheme();
+  const t = useT();
+  const styles = createStyles(colors);
 
-  // Form state
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [date, setDate] = useState(new Date());
+  const [notes, setNotes] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // AI assist state
   const [aiInput, setAiInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -55,106 +70,221 @@ export default function AddTransactionModal({ visible, onClose }: AddTransaction
     setDescription('');
     setCategory('');
     setType('expense');
+    setDate(new Date());
+    setNotes('');
     setAiInput('');
+  };
+
+  useEffect(() => {
+    if (!visible) return;
+    if (editing) {
+      setAmount(editing.amount.toString());
+      setDescription(editing.description);
+      setCategory(editing.category);
+      setType(editing.type);
+      setDate(editing.date);
+      setNotes(editing.notes ?? '');
+      setAiInput('');
+    } else {
+      resetForm();
+    }
+  }, [visible, editing]);
+
+  const applyParsed = (parsed: ParsedTransaction) => {
+    setAmount(parsed.amount.toString());
+    setDescription(parsed.description);
+    setType(parsed.type);
+    const mappedName = AI_CATEGORY_MAP[parsed.category] ?? parsed.category;
+    const localMatch = categories.find((c) => c.name === mappedName && c.type === parsed.type);
+    setCategory(localMatch ? localMatch.name : mappedName);
   };
 
   const handleSave = () => {
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
-      Alert.alert('Error', 'Masukkan jumlah yang valid.');
+      Alert.alert(t('error'), t('validAmount'));
       return;
     }
     if (!description.trim()) {
-      Alert.alert('Error', 'Masukkan deskripsi transaksi.');
+      Alert.alert(t('error'), t('validDescription'));
       return;
     }
     if (!category) {
-      Alert.alert('Error', 'Pilih kategori.');
+      Alert.alert(t('error'), t('validCategory'));
       return;
     }
 
     const now = new Date();
-    addTransaction({
-      id: generateId(),
+    const trimmedNotes = notes.trim() || undefined;
+    const trimmedDescription = description.trim();
+
+    const save = () => {
+      if (editing) {
+        updateTransaction(editing.id, {
+          amount: numericAmount,
+          description: trimmedDescription,
+          category,
+          type,
+          date,
+          notes: trimmedNotes,
+          updatedAt: now,
+        });
+      } else {
+        addTransaction({
+          id: generateId(),
+          amount: numericAmount,
+          description: trimmedDescription,
+          category,
+          type,
+          date,
+          notes: trimmedNotes,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      resetForm();
+      onClose();
+      Alert.alert(t('success'), t('transactionSaved'));
+    };
+
+    if (editing) {
+      save();
+      return;
+    }
+
+    const duplicate = findDuplicate({
       amount: numericAmount,
-      description: description.trim(),
-      category,
+      description: trimmedDescription,
+      date,
       type,
-      date: now,
-      createdAt: now,
-      updatedAt: now,
     });
 
-    resetForm();
-    onClose();
-    Alert.alert('Berhasil', 'Transaksi berhasil ditambahkan!');
+    if (duplicate) {
+      Alert.alert(
+        t('duplicateTransactionTitle'),
+        t('duplicateTransactionMsg').replace('{description}', trimmedDescription),
+        [
+          { text: t('cancel'), style: 'cancel' },
+          {
+            text: t('duplicateTransactionContinue'),
+            onPress: save,
+          },
+        ]
+      );
+      return;
+    }
+
+    save();
   };
 
   const handleAiParse = async () => {
     if (!aiInput.trim()) {
-      Alert.alert('Error', 'Ketik deskripsi transaksi untuk di-parse AI.');
+      Alert.alert(t('error'), t('aiParsePrompt'));
       return;
     }
 
     if (!(await isGeminiConfigured())) {
-      Alert.alert(
-        'Gemini Belum Dikonfigurasi',
-        'Tambahkan Gemini API key di Settings atau EXPO_PUBLIC_GEMINI_API_KEY di file .env'
-      );
+      Alert.alert(t('geminiNotConfigured'), t('geminiNotConfiguredMsg'));
       return;
     }
 
     setIsLoading(true);
     try {
-      const parsed: ParsedTransaction = await parseTransactionWithAI(aiInput.trim());
-      setAmount(parsed.amount.toString());
-      setDescription(parsed.description);
-      setType(parsed.type);
-      const mappedName = AI_CATEGORY_MAP[parsed.category] ?? parsed.category;
-      const localMatch = categories.find((c) => c.name === mappedName && c.type === parsed.type);
-      setCategory(localMatch ? localMatch.name : mappedName);
+      applyParsed(await parseTransactionWithAI(aiInput.trim()));
     } catch (error: any) {
-      Alert.alert('AI Error', error.message || 'Gagal mem-parse transaksi dengan AI.');
+      Alert.alert(t('aiError'), error.message || t('aiParseFailed'));
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleOcr = async (source: 'camera' | 'gallery') => {
+    if (!(await isGeminiConfigured())) {
+      Alert.alert(t('geminiNotConfigured'), t('geminiNotConfiguredMsg'));
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const options: ImagePicker.ImagePickerOptions = { base64: true, quality: 0.7 };
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync(options)
+          : await ImagePicker.launchImageLibraryAsync(options);
+
+      if (result.canceled) return;
+
+      const asset = result.assets?.[0];
+      if (!asset) return;
+
+      let base64 = asset.base64;
+      if (!base64 && asset.uri.startsWith('data:')) {
+        base64 = asset.uri.split(',')[1];
+      }
+      if (!base64) {
+        Alert.alert(t('aiError'), t('ocrFailed'));
+        return;
+      }
+
+      const mimeType = asset.mimeType ?? asset.uri.split(';')[0].split(':')[1] ?? 'image/jpeg';
+
+      applyParsed(await parseReceiptWithAI({ mimeType, base64 }));
+      Alert.alert(t('success'), t('ocrParsed'));
+    } catch (error: any) {
+      Alert.alert(t('aiError'), error.message || t('ocrFailed'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOcrPress = () => {
+    Alert.alert(t('ocrReceipt'), '', [
+      { text: t('ocrTakePhoto'), onPress: () => handleOcr('camera') },
+      { text: t('ocrPickGallery'), onPress: () => handleOcr('gallery') },
+      { text: t('cancel'), style: 'cancel' },
+    ]);
   };
 
   return (
     <Modal visible={visible} onClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.title}>Tambah Transaksi</Text>
+          <Text style={styles.title}>{editing ? t('editTitle') : t('addTitle')}</Text>
 
-          {/* AI Assist Section */}
           <View style={styles.aiSection}>
-            <Text style={styles.sectionLabel}>✨ AI Assist</Text>
-            <Text style={styles.aiHint}>
-              Ketik deskripsi natural, misalnya: "makan bakso 25rb" atau "gaji bulanan 5jt"
-            </Text>
+            <Text style={styles.sectionLabel}>{t('aiAssist')}</Text>
+            <Text style={styles.aiHint}>{t('aiAssistHint')}</Text>
             <Input
-              placeholder='Contoh: "beli kopi 18rb"'
+              placeholder={t('aiInputPlaceholder')}
               value={aiInput}
               onChangeText={setAiInput}
               editable={!isLoading}
             />
             <Button
-              title={isLoading ? 'Memproses...' : '🤖 Parse dengan AI'}
+              title={isLoading ? t('processing') : t('parseWithAi')}
               onPress={handleAiParse}
               disabled={isLoading}
               variant="secondary"
               size="small"
               style={styles.aiButton}
             />
-            {isLoading && <ActivityIndicator size="small" color="#208AEF" style={styles.loader} />}
+            <Button
+              title={isLoading ? t('processing') : t('ocrReceipt')}
+              onPress={handleOcrPress}
+              disabled={isLoading}
+              variant="secondary"
+              size="small"
+              style={styles.aiButton}
+            />
+            {isLoading && (
+              <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
+            )}
           </View>
 
           <View style={styles.divider} />
 
-          {/* Manual Form */}
-          <Text style={styles.sectionLabel}>📝 Detail Transaksi</Text>
+          <Text style={styles.sectionLabel}>{t('transactionDetail')}</Text>
 
-          {/* Type Toggle */}
           <View style={styles.typeToggle}>
             <TouchableOpacity
               style={[styles.typeButton, type === 'expense' && styles.typeButtonActiveExpense]}
@@ -163,7 +293,7 @@ export default function AddTransactionModal({ visible, onClose }: AddTransaction
               <Text
                 style={[styles.typeButtonText, type === 'expense' && styles.typeButtonTextActive]}
               >
-                💸 Pengeluaran
+                💸 {t('expense')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -173,13 +303,13 @@ export default function AddTransactionModal({ visible, onClose }: AddTransaction
               <Text
                 style={[styles.typeButtonText, type === 'income' && styles.typeButtonTextActive]}
               >
-                💰 Pemasukan
+                💰 {t('income')}
               </Text>
             </TouchableOpacity>
           </View>
 
           <Input
-            label="Jumlah (Rp)"
+            label={t('amountLabel')}
             placeholder="Contoh: 25000"
             value={amount}
             onChangeText={setAmount}
@@ -187,14 +317,13 @@ export default function AddTransactionModal({ visible, onClose }: AddTransaction
           />
 
           <Input
-            label="Deskripsi"
-            placeholder="Contoh: Makan siang"
+            label={t('descriptionLabel')}
+            placeholder={t('descriptionPlaceholder')}
             value={description}
             onChangeText={setDescription}
           />
 
-          {/* Category Picker */}
-          <Text style={styles.fieldLabel}>Kategori</Text>
+          <Text style={styles.fieldLabel}>{t('categoryLabel')}</Text>
           <View style={styles.categoryGrid}>
             {categories
               .filter((cat) => cat.type === type)
@@ -216,11 +345,54 @@ export default function AddTransactionModal({ visible, onClose }: AddTransaction
               ))}
           </View>
 
-          {/* Action Buttons */}
+          <Text style={styles.fieldLabel}>{t('dateLabel')}</Text>
+          {Platform.OS === 'web' ? (
+            <Input
+              value={date.toISOString().slice(0, 10)}
+              onChangeText={(v) => {
+                const d = new Date(v);
+                if (!isNaN(d.getTime())) setDate(d);
+              }}
+              placeholder="YYYY-MM-DD"
+            />
+          ) : (
+            <>
+              <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+                <Text style={styles.dateButtonText}>
+                  {date.toLocaleDateString('id-ID', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </Text>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  onChange={(event, selected) => {
+                    setShowDatePicker(false);
+                    if (selected) setDate(selected);
+                  }}
+                />
+              )}
+            </>
+          )}
+
+          <Input
+            label={t('notesLabel')}
+            placeholder={t('notesPlaceholder')}
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+          />
+
           <View style={styles.actions}>
-            <Button title="Simpan" onPress={handleSave} style={styles.saveButton} />
+            <Button title={t('save')} onPress={handleSave} style={styles.saveButton} />
             <Button
-              title="Batal"
+              title={t('cancel')}
               onPress={() => {
                 resetForm();
                 onClose();
@@ -235,112 +407,126 @@ export default function AddTransactionModal({ visible, onClose }: AddTransaction
   );
 }
 
-const styles = StyleSheet.create({
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  aiSection: {
-    backgroundColor: '#f0f7ff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-  },
-  aiHint: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-  },
-  aiButton: {
-    marginTop: 4,
-  },
-  loader: {
-    marginTop: 8,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e0e0e0',
-    marginVertical: 16,
-  },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 8,
-  },
-  typeToggle: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    gap: 8,
-  },
-  typeButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
-    alignItems: 'center',
-  },
-  typeButtonActiveExpense: {
-    backgroundColor: '#ffe0e0',
-    borderColor: '#ff4444',
-  },
-  typeButtonActiveIncome: {
-    backgroundColor: '#e0ffe0',
-    borderColor: '#44bb44',
-  },
-  typeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  typeButtonTextActive: {
-    color: '#000',
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 8,
-    color: '#000',
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
-  categoryChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
-    backgroundColor: '#f9f9f9',
-  },
-  categoryChipActive: {
-    backgroundColor: '#208AEF',
-    borderColor: '#208AEF',
-  },
-  categoryChipText: {
-    fontSize: 13,
-    color: '#555',
-  },
-  categoryChipTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  actions: {
-    marginTop: 8,
-    gap: 8,
-  },
-  saveButton: {
-    marginTop: 4,
-  },
-  cancelButton: {
-    marginTop: 0,
-  },
-});
+const createStyles = (colors: Theme) =>
+  StyleSheet.create({
+    title: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 16,
+      textAlign: 'center',
+    },
+    aiSection: {
+      backgroundColor: colors.backgroundElement,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+    },
+    aiHint: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginBottom: 8,
+    },
+    aiButton: {
+      marginTop: 4,
+    },
+    loader: {
+      marginTop: 8,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 16,
+    },
+    sectionLabel: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    typeToggle: {
+      flexDirection: 'row',
+      marginBottom: 12,
+      gap: 8,
+    },
+    typeButton: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+    },
+    typeButtonActiveExpense: {
+      backgroundColor: '#ffe0e0',
+      borderColor: colors.danger,
+    },
+    typeButtonActiveIncome: {
+      backgroundColor: '#e0ffe0',
+      borderColor: '#44bb44',
+    },
+    typeButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    typeButtonTextActive: {
+      color: colors.text,
+    },
+    fieldLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 8,
+      marginTop: 8,
+      color: colors.text,
+    },
+    dateButton: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      backgroundColor: colors.chipBg,
+      marginBottom: 8,
+    },
+    dateButtonText: {
+      fontSize: 14,
+      color: colors.text,
+    },
+    categoryGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 16,
+    },
+    categoryChip: {
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.chipBg,
+    },
+    categoryChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    categoryChipText: {
+      fontSize: 13,
+      color: colors.text,
+    },
+    categoryChipTextActive: {
+      color: '#fff',
+      fontWeight: '600',
+    },
+    actions: {
+      marginTop: 8,
+      gap: 8,
+    },
+    saveButton: {
+      marginTop: 4,
+    },
+    cancelButton: {
+      marginTop: 0,
+    },
+  });

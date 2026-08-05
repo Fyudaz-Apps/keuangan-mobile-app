@@ -19,6 +19,7 @@
 
 ### Database (expo-sqlite) — `src/services/dbService.ts`
 - [x] DB file `keuangan.db`, opened with `openDatabaseSync`
+- [x] Versioned migration framework via `PRAGMA user_version` (`migrateDatabase`) — v1 = current schema
 - [x] Tables created with `CREATE TABLE IF NOT EXISTS`: `"Transaction"`, `Category`, `Budget`
   - `Transaction` is a SQLite reserved keyword → table name always quoted as `"Transaction"`.
 - [x] Full CRUD for all three entities (add / get all / update / delete)
@@ -26,35 +27,40 @@
 - [x] Stores (Zustand) hydrate from DB via `loadFromDb()` and write through on every mutation
 
 ### AI Parsing — `src/services/geminiService.ts`
-- [x] Text-only transaction parsing via `parseTransactionWithAI(input)`
+- [x] Text transaction parsing via `parseTransactionWithAI(input)`
+- [x] Receipt OCR via Gemini vision `parseReceiptWithAI(image)` (inline base64 image)
 - [x] Gemini via direct `fetch` (no SDK)
 - [x] Key resolution via `src/services/keyService.ts`: `expo-secure-store` (set from Settings) → `EXPO_PUBLIC_GEMINI_API_KEY` fallback
 - [x] Settings screen: save / clear the Gemini API key
 
 ### Screens
-- [x] Dashboard
-- [x] Transactions (list + add/edit form, date picker)
-- [x] Categories
-- [x] Budgets
-- [x] Settings (incl. Gemini API key)
+- [x] Dashboard (filter periode Harian/Mingguan/Bulanan/Tahunan, summary + expense-by-category PieChart per periode, trend BarChart income vs expense, recent transactions)
+- [x] Transactions (list sorted by date desc, add via manual form + AI text parse + receipt OCR, edit, delete, date picker, notes)
+- [x] Categories — full CRUD
+- [x] Budgets — full CRUD
+- [x] Settings (Gemini API key, theme toggle, language toggle, export CSV/PDF, import bulk file catatan/Samsung Notes — txt/md & sdocx via `src/utils/sdocx.ts`)
+
+### UI / i18n / Theme
+- [x] i18n id/en (`src/i18n/`) — semua string UI via `useT()`/`t()`
+- [x] Dark mode — theme palette (`src/constants/theme.ts`) + `useTheme()`, toggle Light/Dark/System
+- [x] Export CSV + PDF (`src/services/exportService.ts`, expo-file-system + expo-print + expo-sharing)
+- [x] OCR foto: expo-camera + expo-image-picker di AddTransactionModal
+- [x] Cloud Backup (Firebase): `src/services/firebaseService.ts` (JS SDK v12, auth email/password via async-storage, backup/restore ke koleksi `users/{uid}/{transactions,categories,budgets}`, merge LWW by `updatedAt`; serialization/merge di `src/utils/firebaseSync.ts`), Settings kartu "Cloud Backup"
+- [x] Login gate: `src/screens/AuthScreen.tsx` (email/password) tampil sebelum app di `app/index.tsx`; sesi persist async-storage; di-skip kalau Firebase belum dikonfigurasi / web
 
 ### Build / Tooling
 - [x] `npm run prebuild` (`expo prebuild --clean`) — required because expo-sqlite/expo-secure-store are native modules; Expo Go will NOT work
-- [x] Scripts: `start`, `android`, `ios`, `web`, `lint`, `lint:fix`, `format`, `format:check`, `type-check`
+- [x] Scripts: `start`, `android`, `ios`, `web`, `lint`, `lint:fix`, `format`, `format:check`, `type-check`, `test`
+- [x] Tests via jest-expo (5 suites: `aggregate`, `i18n`, `import`, `sdocx`, `firebaseSync`)
 
 ---
 
 ## Not implemented (planned / out of scope)
 
-- Category management screen (list exists; add/edit/delete UI not complete)
-- Budget management (CRUD screen incomplete)
-- Data sync and import/export
-- Analytics and reporting / charts (no chart-kit dependency)
-- i18n
-- Dark mode
-- Receipt OCR / voice input (no expo-camera, expo-av, expo-image-picker)
-- Tests (no test framework installed)
-- Migration framework for schema changes (schema is `CREATE IF NOT EXISTS` only)
+- Auto-sync realtime / background sync (Firebase manual backup/restore saja; Firestore offline persistence web-only, RN JS SDK memory cache)
+- Voice input / voice memo (no expo-av)
+- Database encryption (expo-sqlite tak dukung SQLCipher di managed workflow)
+- Google sign-in (butuh native `@react-native-google-signin`, prebuild ulang)
 
 ---
 

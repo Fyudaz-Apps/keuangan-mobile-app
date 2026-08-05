@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal as RNModal, View, StyleSheet, ViewStyle } from 'react-native';
+import { useTheme } from '@/hooks/use-theme';
 
 interface ModalProps {
   visible: boolean;
@@ -10,10 +11,13 @@ interface ModalProps {
 }
 
 const Modal: React.FC<ModalProps> = ({ visible, onClose, title, children, contentStyle }) => {
+  const colors = useTheme();
   return (
     <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={[styles.container, contentStyle]}>{children}</View>
+        <View style={[styles.container, { backgroundColor: colors.card }, contentStyle]}>
+          {children}
+        </View>
       </View>
     </RNModal>
   );
