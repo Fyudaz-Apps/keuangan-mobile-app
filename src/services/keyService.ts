@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { getGeminiApiKey } from './envService';
 
 const GEMINI_KEY_STORE = 'gemini_api_key';
 
@@ -9,7 +10,7 @@ export async function getGeminiKey(): Promise<string | null> {
   } catch {
     // SecureStore can fail on web; fall through to env.
   }
-  return process.env.EXPO_PUBLIC_GEMINI_API_KEY || null;
+  return getGeminiApiKey() || null;
 }
 
 export async function setGeminiKey(key: string): Promise<void> {
