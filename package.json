@@ -44,8 +44,8 @@
     "expo-web-browser": "~15.0.11",
     "firebase": "^12.17.1",
     "pako": "^3.0.1",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "react-hook-form": "^7.83.0",
     "react-native": "0.81.5",
     "react-native-chart-kit": "^7.0.2",
@@ -94,6 +94,10 @@
     "build:ios": "eas build --platform ios",
     "submit:android": "eas submit --platform android",
     "submit:ios": "eas submit --platform ios"
+  },
+  "overrides": {
+    "@emnapi/core": "1.11.3",
+    "@emnapi/runtime": "1.11.3"
   },
   "jest": {
     "preset": "jest-expo",

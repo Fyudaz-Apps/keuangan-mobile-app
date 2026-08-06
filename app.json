@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "fahmiyuda31-shiny-telegram",
-    "slug": "fahmiyuda31-shiny-telegram",
+    "slug": "ai-dompet",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -17,7 +17,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.anonymous.fahmiyuda31shinytelegram"
     },
     "web": {
       "output": "static",
@@ -50,6 +55,20 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a813dd0a-c2ee-4e88-8e58-bb8d0e8a255e"
+      },
+      "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCQecloU90jNufs1l34l4IG5kl7k_me9pA",
+      "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "divine-beanbag-355600.firebaseapp.com",
+      "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "divine-beanbag-355600",
+      "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "divine-beanbag-355600.firebasestorage.app",
+      "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "629482976175",
+      "EXPO_PUBLIC_FIREBASE_APP_ID": "1:629482976175:web:e5522631704d885771355a",
+      "EXPO_PUBLIC_GEMINI_API_KEY": "AQ.Ab8RN6J_00yLiwcKiJ6bFER9GxmvsvAJ2KW2cqFdK-ic5fyjwA"
+    },
+    "owner": "fyudaz"
   }
 }
