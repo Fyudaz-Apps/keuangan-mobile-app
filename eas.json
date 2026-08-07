@@ -4,13 +4,13 @@
   },
   "build": {
     "production": {
-      "node": "22.x",
+      // "node": "22.x",
       "android": {
         "buildType": "apk"
       }
     },
     "preview": {
-      "node": "22.x",
+      // "node": "22.x",
       "android": {
         "buildType": "apk"
       }
