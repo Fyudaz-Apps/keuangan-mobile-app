@@ -9,12 +9,19 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Button, Input } from '@/components/ui';
 import * as DocumentPicker from 'expo-document-picker';
 import { useAppStore, useTransactionStore, useCategoryStore, useBudgetStore } from '@/store';
 import { useTheme, Theme } from '@/hooks/use-theme';
 import { useT } from '@/i18n';
-import { getGeminiKey, setGeminiKey, clearGeminiKey } from '@/services/keyService';
+import { Card, Button, Input, ModelSelect } from '@/components/ui';
+import {
+  getGeminiKey,
+  setGeminiKey,
+  clearGeminiKey,
+  getGeminiModel,
+  setGeminiModel,
+  DEFAULT_GEMINI_MODEL,
+} from '@/services/keyService';
 import {
   exportTransactionsCsv,
   exportTransactionsPdf,
@@ -44,6 +51,7 @@ export default function SettingsScreen() {
   const t = useT();
   const styles = createStyles(colors);
   const [apiKey, setApiKey] = useState('');
+  const [model, setModel] = useState<string>(DEFAULT_GEMINI_MODEL);
   const [saving, setSaving] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [backupBusy, setBackupBusy] = useState(false);
@@ -54,6 +62,7 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     getGeminiKey().then((key) => setApiKey(key || ''));
+    getGeminiModel().then(setModel);
     if (Platform.OS === 'web' || !isFirebaseConfigured()) return;
     setCurrentUser(getCurrentUser());
     const unsubscribe = subscribeToAuth((user) => {
@@ -71,6 +80,7 @@ export default function SettingsScreen() {
       } else {
         await clearGeminiKey();
       }
+      await setGeminiModel(model);
       setApiKey(trimmed);
     } finally {
       setSaving(false);
@@ -296,6 +306,7 @@ export default function SettingsScreen() {
             autoCorrect={false}
             secureTextEntry
           />
+          <ModelSelect label={t('geminiModel')} value={model} onChange={setModel} />
           <Button
             title={saving ? t('saving') : t('save')}
             onPress={handleSave}

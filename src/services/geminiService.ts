@@ -1,7 +1,6 @@
-import { getGeminiKey } from './keyService';
+import { getGeminiKey, getGeminiModel } from './keyService';
 
-const GEMINI_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 export interface ParsedTransaction {
   amount: number;
@@ -63,7 +62,7 @@ Respond ONLY with a valid JSON object (no markdown, no explanation):
 }
 
 async function callGemini(prompt: string, image?: GeminiImage): Promise<ParsedTransaction> {
-  const apiKey = await getGeminiKey();
+  const [apiKey, model] = await Promise.all([getGeminiKey(), getGeminiModel()]);
   if (!apiKey) {
     throw new Error(
       'Gemini API key is not configured. Add one in Settings or via EXPO_PUBLIC_GEMINI_API_KEY in your .env file.'
@@ -76,23 +75,26 @@ async function callGemini(prompt: string, image?: GeminiImage): Promise<ParsedTr
   }
   parts.push({ text: prompt });
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts,
-        },
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 512,
+  const response = await fetch(
+    `${GEMINI_BASE_URL}/${encodeURIComponent(model)}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    }),
-  });
+      body: JSON.stringify({
+        contents: [
+          {
+            parts,
+          },
+        ],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 512,
+        },
+      }),
+    }
+  );
 
   if (!response.ok) {
     const errorBody = await response.text();

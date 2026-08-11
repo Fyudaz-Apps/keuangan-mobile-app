@@ -49,6 +49,8 @@ export const messages: Record<Language, MessageSet> = {
     aiGeminiHint:
       'Dipakai untuk parsing transaksi via AI. Jika kosong, fallback ke EXPO_PUBLIC_GEMINI_API_KEY di file .env.',
     geminiApiKey: 'Gemini API Key',
+    geminiModel: 'Model AI',
+    geminiModelHint: 'Pilih model Gemini untuk parsing transaksi.',
     save: 'Simpan',
     saving: 'Menyimpan...',
     clearUseEnv: 'Bersihkan (pakai .env)',
@@ -219,6 +221,8 @@ export const messages: Record<Language, MessageSet> = {
     aiGeminiHint:
       'Used for AI transaction parsing. If empty, falls back to EXPO_PUBLIC_GEMINI_API_KEY in .env.',
     geminiApiKey: 'Gemini API Key',
+    geminiModel: 'AI Model',
+    geminiModelHint: 'Select Gemini model used for transaction parsing.',
     save: 'Save',
     saving: 'Saving...',
     clearUseEnv: 'Clear (use .env)',
