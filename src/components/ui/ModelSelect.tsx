@@ -41,7 +41,12 @@ const ModelSelect: React.FC<ModelSelectProps> = ({ label, value, onChange }) => 
         <Text style={[styles.chevron, { color: colors.textMuted }]}>▾</Text>
       </TouchableOpacity>
 
-      <RNModal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <RNModal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
         <View style={styles.overlay}>
           <View style={[styles.modal, { backgroundColor: colors.card }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>{label}</Text>
@@ -68,9 +73,7 @@ const ModelSelect: React.FC<ModelSelectProps> = ({ label, value, onChange }) => 
                         {model.description}
                       </Text>
                     </View>
-                    {isSelected && (
-                      <Text style={[styles.check, { color: colors.primary }]}>✓</Text>
-                    )}
+                    {isSelected && <Text style={[styles.check, { color: colors.primary }]}>✓</Text>}
                   </TouchableOpacity>
                 );
               })}

@@ -1,6 +1,10 @@
 import * as SQLite from 'expo-sqlite';
 import { Category, Transaction, Budget } from '@/database/models';
 
+function toIsoString(value: Date | string): string {
+  return typeof value === 'string' ? value : value.toISOString();
+}
+
 let db: SQLite.SQLiteDatabase | null = null;
 
 function getDb(): SQLite.SQLiteDatabase {
@@ -248,8 +252,8 @@ export async function seedDefaultCategories(): Promise<void> {
           category.color,
           category.icon,
           category.type,
-          category.createdAt.toISOString(),
-          category.updatedAt.toISOString(),
+          toIsoString(category.createdAt),
+          toIsoString(category.updatedAt),
         ]
       );
     }
@@ -271,10 +275,10 @@ export async function addTransaction(transaction: Transaction): Promise<void> {
       transaction.description,
       transaction.category,
       transaction.type,
-      transaction.date.toISOString(),
+      toIsoString(transaction.date),
       transaction.notes ?? null,
-      transaction.createdAt.toISOString(),
-      transaction.updatedAt.toISOString(),
+      toIsoString(transaction.createdAt),
+      toIsoString(transaction.updatedAt),
     ]
   );
 }
@@ -313,7 +317,7 @@ export async function updateTransaction(id: string, updates: Partial<Transaction
   }
   if (updates.date !== undefined) {
     fields.push('date = ?');
-    values.push(updates.date.toISOString());
+    values.push(toIsoString(updates.date));
   }
   if (updates.notes !== undefined) {
     fields.push('notes = ?');
@@ -321,7 +325,7 @@ export async function updateTransaction(id: string, updates: Partial<Transaction
   }
   if (updates.updatedAt !== undefined) {
     fields.push('updatedAt = ?');
-    values.push(updates.updatedAt.toISOString());
+    values.push(toIsoString(updates.updatedAt));
   } else {
     fields.push('updatedAt = ?');
     values.push(new Date().toISOString());
@@ -343,8 +347,8 @@ export async function addCategory(category: Category): Promise<void> {
       category.color,
       category.icon,
       category.type,
-      category.createdAt.toISOString(),
-      category.updatedAt.toISOString(),
+      toIsoString(category.createdAt),
+      toIsoString(category.updatedAt),
     ]
   );
 }
@@ -383,7 +387,7 @@ export async function updateCategory(id: string, updates: Partial<Category>): Pr
   }
   if (updates.updatedAt !== undefined) {
     fields.push('updatedAt = ?');
-    values.push(updates.updatedAt.toISOString());
+    values.push(toIsoString(updates.updatedAt));
   } else {
     fields.push('updatedAt = ?');
     values.push(new Date().toISOString());
@@ -404,10 +408,10 @@ export async function addBudget(budget: Budget): Promise<void> {
       budget.category,
       budget.amount,
       budget.period,
-      budget.startDate.toISOString(),
-      budget.endDate ? budget.endDate.toISOString() : null,
-      budget.createdAt.toISOString(),
-      budget.updatedAt.toISOString(),
+      toIsoString(budget.startDate),
+      budget.endDate ? toIsoString(budget.endDate) : null,
+      toIsoString(budget.createdAt),
+      toIsoString(budget.updatedAt),
     ]
   );
 }
@@ -442,15 +446,15 @@ export async function updateBudget(id: string, updates: Partial<Budget>): Promis
   }
   if (updates.startDate !== undefined) {
     fields.push('startDate = ?');
-    values.push(updates.startDate.toISOString());
+    values.push(toIsoString(updates.startDate));
   }
   if (updates.endDate !== undefined) {
     fields.push('endDate = ?');
-    values.push(updates.endDate ? updates.endDate.toISOString() : null);
+    values.push(updates.endDate ? toIsoString(updates.endDate) : null);
   }
   if (updates.updatedAt !== undefined) {
     fields.push('updatedAt = ?');
-    values.push(updates.updatedAt.toISOString());
+    values.push(toIsoString(updates.updatedAt));
   } else {
     fields.push('updatedAt = ?');
     values.push(new Date().toISOString());
