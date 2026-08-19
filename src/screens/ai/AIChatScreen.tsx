@@ -80,6 +80,66 @@ export default function AIChatScreen() {
     t('aiChatQuick3'),
   ];
 
+  const renderFormattedText = (content: string, textColor: string) => {
+    // Parser sederhana untuk markdown dasar: heading (#, ##, ###), bold (**text**), bullet points (* / -)
+    const lines = content.split('\n');
+    return lines.map((line, idx) => {
+      let trimmed = line.trim();
+
+      // Heading (###, ##, #)
+      const isHeader = /^#{1,6}\s+/.test(trimmed);
+      if (isHeader) {
+        trimmed = trimmed.replace(/^#{1,6}\s+/, '');
+      }
+
+      // Bullet list (* or -)
+      const isBullet = /^[\*\-]\s+/.test(trimmed);
+      if (isBullet) {
+        trimmed = trimmed.replace(/^[\*\-]\s+/, '');
+      }
+
+      // Parse bold **text**
+      const parts = trimmed.split(/(\*\*.*?\*\*)/g);
+
+      return (
+        <View key={idx} style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: isHeader ? 6 : 2, marginBottom: isHeader ? 4 : 0 }}>
+          {isBullet && (
+            <Text style={[{ color: textColor, fontWeight: '700', marginRight: 6 }]}>•</Text>
+          )}
+          {parts.map((part, pIdx) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return (
+                <Text
+                  key={pIdx}
+                  style={{
+                    color: textColor,
+                    fontWeight: '700',
+                    fontSize: isHeader ? 15 : 14,
+                  }}
+                >
+                  {part.slice(2, -2)}
+                </Text>
+              );
+            }
+            return (
+              <Text
+                key={pIdx}
+                style={{
+                  color: textColor,
+                  fontWeight: isHeader ? '700' : '400',
+                  fontSize: isHeader ? 15 : 14,
+                  lineHeight: 20,
+                }}
+              >
+                {part}
+              </Text>
+            );
+          })}
+        </View>
+      );
+    });
+  };
+
   const renderItem = ({ item }: { item: ChatMessage }) => {
     const isUser = item.role === 'user';
     return (
@@ -102,18 +162,12 @@ export default function AIChatScreen() {
               : [styles.aiBubble, { backgroundColor: colors.card, borderColor: colors.border }],
           ]}
         >
-          <Text
-            style={[
-              styles.messageText,
-              { color: isUser ? '#FFFFFF' : colors.text },
-            ]}
-          >
-            {item.content}
-          </Text>
+          {renderFormattedText(item.content, isUser ? '#FFFFFF' : colors.text)}
         </View>
       </View>
     );
   };
+
 
   return (
     <KeyboardAvoidingView
