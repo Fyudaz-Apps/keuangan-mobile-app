@@ -1,11 +1,22 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Modal } from 'react-native';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTransactionStore, useCategoryStore } from '@/store';
 import { Transaction } from '@/database/models';
 import { useTheme, Theme } from '@/hooks/use-theme';
 import { useT } from '@/i18n';
 import AddTransactionModal from '@/components/AddTransactionModal';
+import { Input } from '@/components/ui';
 
 const MONTH_NAMES = [
   'Januari',
@@ -22,6 +33,69 @@ const MONTH_NAMES = [
   'Desember',
 ];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+type ActiveFilter =
+  | { kind: 'day'; date: Date }
+  | { kind: 'week'; start: Date }
+  | { kind: 'month'; month: number; year: number }
+  | { kind: 'range'; start: Date; end: Date }
+  | null;
+
+type DraftMode = 'range' | 'day' | 'week' | 'month';
+type QuickKey = 'today' | 'week' | 'month';
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const weekStartOf = (d: Date) => {
+  const day = d.getDay() === 0 ? 7 : d.getDay();
+  const start = startOfDay(d);
+  start.setDate(start.getDate() - day + 1);
+  return start;
+};
+const isSameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
+const dateKey = (d: Date) => d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+const toDateInput = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const parseDateInput = (v: string) => {
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+};
+const formatShort = (d: Date) => `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+const formatWeek = (start: Date) => {
+  const end = new Date(start.getTime() + 6 * DAY_MS);
+  return `${start.getDate()} ${MONTH_NAMES[start.getMonth()]} – ${end.getDate()} ${MONTH_NAMES[end.getMonth()]} ${end.getFullYear()}`;
+};
+
+function WebDateInput({ value, onChange }: { value: Date; onChange: (d: Date) => void }) {
+  const [text, setText] = useState(toDateInput(value));
+  const prevKey = useRef(toDateInput(value));
+  useEffect(() => {
+    const key = toDateInput(value);
+    if (key !== prevKey.current) {
+      prevKey.current = key;
+      setText(key);
+    }
+  }, [value]);
+  return (
+    <Input
+      value={text}
+      onChangeText={(v) => {
+        setText(v);
+        const d = parseDateInput(v);
+        if (d) onChange(d);
+      }}
+      placeholder="YYYY-MM-DD"
+    />
+  );
+}
+
 export default function TransactionsScreen() {
   const { transactions, removeTransaction, removeTransactions } = useTransactionStore();
   const { categories } = useCategoryStore();
@@ -32,30 +106,66 @@ export default function TransactionsScreen() {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
-  const [filterMonth, setFilterMonth] = useState<number | null>(null);
-  const [filterYear, setFilterYear] = useState<number | null>(null);
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
+
+  const [draftMode, setDraftMode] = useState<DraftMode>('range');
+  const [draftDay, setDraftDay] = useState(new Date());
+  const [draftWeekStart, setDraftWeekStart] = useState(weekStartOf(new Date()));
+  const [draftMonth, setDraftMonth] = useState(new Date().getMonth());
+  const [draftYear, setDraftYear] = useState(new Date().getFullYear());
+  const [draftStart, setDraftStart] = useState(new Date());
+  const [draftEnd, setDraftEnd] = useState(new Date());
+  const [showDayPicker, setShowDayPicker] = useState(false);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
   const categoryName = (name: string) => categories.find((c) => c.name === name)?.name ?? name;
 
   const years = useMemo(() => {
-    const set = new Set<number>();
+    const set = new Set<number>([new Date().getFullYear()]);
     for (const tx of transactions) {
       set.add(new Date(tx.date).getFullYear());
     }
     return [...set].sort((a, b) => b - a);
   }, [transactions]);
 
+  const weekOptions = useMemo(() => {
+    const now = new Date();
+    const map = new Map<number, Date>();
+    const addWeek = (d: Date) => {
+      const start = weekStartOf(d);
+      map.set(start.getTime(), start);
+    };
+    addWeek(now);
+    for (const tx of transactions) addWeek(new Date(tx.date));
+    return [...map.values()].sort((a, b) => b.getTime() - a.getTime());
+  }, [transactions]);
+
   const filtered = useMemo(() => {
     const sorted = [...transactions].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-    if (filterMonth === null || filterYear === null) return sorted;
+    if (!activeFilter) return sorted;
     return sorted.filter((tx) => {
       const d = new Date(tx.date);
-      return d.getFullYear() === filterYear && d.getMonth() === filterMonth;
+      switch (activeFilter.kind) {
+        case 'day':
+          return dateKey(d) === dateKey(activeFilter.date);
+        case 'week':
+          return (
+            dateKey(d) >= dateKey(activeFilter.start) &&
+            dateKey(d) <= dateKey(new Date(activeFilter.start.getTime() + 6 * DAY_MS))
+          );
+        case 'month':
+          return d.getFullYear() === activeFilter.year && d.getMonth() === activeFilter.month;
+        case 'range':
+          return (
+            dateKey(d) >= dateKey(activeFilter.start) && dateKey(d) <= dateKey(activeFilter.end)
+          );
+      }
     });
-  }, [transactions, filterMonth, filterYear]);
+  }, [transactions, activeFilter]);
 
   const totals = useMemo(() => {
     let income = 0;
@@ -138,22 +248,143 @@ export default function TransactionsScreen() {
 
   const selectedCount = selectedIds.size;
 
-  const applyFilter = (month: number | null, year: number | null) => {
-    setFilterMonth(month);
-    setFilterYear(year);
+  const toggleQuick = (key: QuickKey) => {
+    const now = new Date();
+    if (key === 'today') {
+      setActiveFilter((prev) =>
+        prev && prev.kind === 'day' && isSameDay(prev.date, now) ? null : { kind: 'day', date: now }
+      );
+    } else if (key === 'week') {
+      const start = weekStartOf(now);
+      setActiveFilter((prev) =>
+        prev && prev.kind === 'week' && prev.start.getTime() === start.getTime()
+          ? null
+          : { kind: 'week', start }
+      );
+    } else {
+      const m = now.getMonth();
+      const y = now.getFullYear();
+      setActiveFilter((prev) =>
+        prev && prev.kind === 'month' && prev.month === m && prev.year === y
+          ? null
+          : { kind: 'month', month: m, year: y }
+      );
+    }
+  };
+
+  const isQuickActive = (key: QuickKey) => {
+    if (!activeFilter) return false;
+    const now = new Date();
+    if (key === 'today') return activeFilter.kind === 'day' && isSameDay(activeFilter.date, now);
+    if (key === 'week') {
+      return (
+        activeFilter.kind === 'week' && activeFilter.start.getTime() === weekStartOf(now).getTime()
+      );
+    }
+    return (
+      activeFilter.kind === 'month' &&
+      activeFilter.month === now.getMonth() &&
+      activeFilter.year === now.getFullYear()
+    );
+  };
+
+  const openFilterModal = () => {
+    const now = new Date();
+    setDraftMode('range');
+    setDraftStart(new Date(now.getFullYear(), now.getMonth(), 1));
+    setDraftEnd(now);
+    setDraftDay(now);
+    setDraftWeekStart(weekStartOf(now));
+    setDraftMonth(now.getMonth());
+    setDraftYear(now.getFullYear());
+
+    if (activeFilter) {
+      if (activeFilter.kind === 'day') {
+        setDraftMode('day');
+        setDraftDay(activeFilter.date);
+      } else if (activeFilter.kind === 'week') {
+        setDraftMode('week');
+        setDraftWeekStart(activeFilter.start);
+      } else if (activeFilter.kind === 'month') {
+        setDraftMode('month');
+        setDraftMonth(activeFilter.month);
+        setDraftYear(activeFilter.year);
+      } else {
+        setDraftMode('range');
+        setDraftStart(activeFilter.start);
+        setDraftEnd(activeFilter.end);
+      }
+    }
+    setShowFilterModal(true);
+  };
+
+  const applyDraft = () => {
+    if (draftMode === 'day') {
+      setActiveFilter({ kind: 'day', date: draftDay });
+    } else if (draftMode === 'week') {
+      setActiveFilter({ kind: 'week', start: draftWeekStart });
+    } else if (draftMode === 'month') {
+      setActiveFilter({ kind: 'month', month: draftMonth, year: draftYear });
+    } else {
+      let start = startOfDay(draftStart);
+      let end = startOfDay(draftEnd);
+      if (end.getTime() < start.getTime()) [start, end] = [end, start];
+      setActiveFilter({ kind: 'range', start, end });
+    }
     setShowFilterModal(false);
   };
 
   const clearFilter = () => {
-    setFilterMonth(null);
-    setFilterYear(null);
+    setActiveFilter(null);
     setShowFilterModal(false);
   };
 
   const filterLabel = () => {
-    if (filterMonth === null || filterYear === null) return t('allTransactions');
-    return `${MONTH_NAMES[filterMonth]} ${filterYear}`;
+    if (!activeFilter) return t('allTransactions');
+    switch (activeFilter.kind) {
+      case 'day':
+        return formatShort(activeFilter.date);
+      case 'week':
+        return isSameDay(activeFilter.start, weekStartOf(new Date()))
+          ? `${t('thisWeek')} · ${formatWeek(activeFilter.start)}`
+          : formatWeek(activeFilter.start);
+      case 'month':
+        return `${MONTH_NAMES[activeFilter.month]} ${activeFilter.year}`;
+      case 'range':
+        return `${formatShort(activeFilter.start)} – ${formatShort(activeFilter.end)}`;
+    }
   };
+
+  const renderDatePicker = (
+    value: Date,
+    onChange: (d: Date) => void,
+    visible: boolean,
+    hide: () => void,
+    show: () => void
+  ) => (
+    <>
+      {Platform.OS === 'web' ? (
+        <WebDateInput value={value} onChange={onChange} />
+      ) : (
+        <>
+          <TouchableOpacity style={styles.dateButton} onPress={show}>
+            <Text style={styles.dateButtonText}>{formatShort(value)}</Text>
+          </TouchableOpacity>
+          {visible && (
+            <DateTimePicker
+              value={value}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              onChange={(event, selected) => {
+                hide();
+                if (selected) onChange(selected);
+              }}
+            />
+          )}
+        </>
+      )}
+    </>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -175,10 +406,32 @@ export default function TransactionsScreen() {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.filterBar} onPress={() => setShowFilterModal(true)}>
+      <TouchableOpacity style={styles.filterBar} onPress={openFilterModal}>
         <Text style={styles.filterLabel}>{filterLabel()}</Text>
         <Text style={styles.filterChevron}>▼</Text>
       </TouchableOpacity>
+
+      <View style={styles.quickFilterBar}>
+        {(
+          [
+            { key: 'today', label: t('today') },
+            { key: 'week', label: t('thisWeek') },
+            { key: 'month', label: t('thisMonth') },
+          ] as const
+        ).map(({ key, label }) => (
+          <TouchableOpacity
+            key={key}
+            style={[styles.quickFilterItem, isQuickActive(key) && styles.quickFilterItemActive]}
+            onPress={() => toggleQuick(key)}
+          >
+            <Text
+              style={[styles.quickFilterText, isQuickActive(key) && styles.quickFilterTextActive]}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <View style={styles.totalBar}>
         <View style={styles.totalItem}>
@@ -265,51 +518,141 @@ export default function TransactionsScreen() {
       <Modal visible={showFilterModal} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} onPress={() => setShowFilterModal(false)}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{t('filterByMonthYear')}</Text>
-            <FlatList
-              data={[...years].sort((a, b) => a - b)}
-              keyExtractor={(item) => String(item)}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.yearList}
-              renderItem={({ item }) => (
+            <Text style={styles.modalTitle}>{t('filterTransactions')}</Text>
+
+            <View style={styles.modeTabs}>
+              {(
+                [
+                  { key: 'range', label: t('range') },
+                  { key: 'day', label: t('day') },
+                  { key: 'week', label: t('week') },
+                  { key: 'month', label: t('month') },
+                ] as const
+              ).map(({ key, label }) => (
                 <TouchableOpacity
-                  style={[styles.yearItem, filterYear === item && styles.yearItemActive]}
-                  onPress={() => applyFilter(filterMonth, item)}
+                  key={key}
+                  style={[styles.modeTab, draftMode === key && styles.modeTabActive]}
+                  onPress={() => setDraftMode(key)}
                 >
-                  <Text style={[styles.yearText, filterYear === item && styles.yearTextActive]}>
-                    {item}
+                  <Text style={[styles.modeTabText, draftMode === key && styles.modeTabTextActive]}>
+                    {label}
                   </Text>
                 </TouchableOpacity>
-              )}
-            />
-            <FlatList
-              data={MONTH_NAMES.map((name, idx) => ({ name, idx }))}
-              keyExtractor={(item) => String(item.idx)}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.monthList}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.monthItem, filterMonth === item.idx && styles.monthItemActive]}
-                  onPress={() => applyFilter(item.idx, filterYear ?? new Date().getFullYear())}
-                >
-                  <Text
-                    style={[styles.monthText, filterMonth === item.idx && styles.monthTextActive]}
+              ))}
+            </View>
+
+            {draftMode === 'range' && (
+              <View style={styles.modeBody}>
+                <Text style={styles.fieldLabel}>{t('startDate')}</Text>
+                {renderDatePicker(
+                  draftStart,
+                  setDraftStart,
+                  showStartPicker,
+                  () => setShowStartPicker(false),
+                  () => setShowStartPicker(true)
+                )}
+                <Text style={styles.fieldLabel}>{t('endDate')}</Text>
+                {renderDatePicker(
+                  draftEnd,
+                  setDraftEnd,
+                  showEndPicker,
+                  () => setShowEndPicker(false),
+                  () => setShowEndPicker(true)
+                )}
+              </View>
+            )}
+
+            {draftMode === 'day' && (
+              <View style={styles.modeBody}>
+                {renderDatePicker(
+                  draftDay,
+                  setDraftDay,
+                  showDayPicker,
+                  () => setShowDayPicker(false),
+                  () => setShowDayPicker(true)
+                )}
+              </View>
+            )}
+
+            {draftMode === 'week' && (
+              <FlatList
+                data={weekOptions}
+                keyExtractor={(item) => String(item.getTime())}
+                style={styles.modeList}
+                contentContainerStyle={styles.modeListContent}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.weekItem,
+                      draftWeekStart.getTime() === item.getTime() && styles.weekItemActive,
+                    ]}
+                    onPress={() => setDraftWeekStart(item)}
                   >
-                    {item.name}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            />
+                    <Text
+                      style={[
+                        styles.weekText,
+                        draftWeekStart.getTime() === item.getTime() && styles.weekTextActive,
+                      ]}
+                    >
+                      {isSameDay(item, weekStartOf(new Date()))
+                        ? `${t('thisWeek')} · ${formatWeek(item)}`
+                        : formatWeek(item)}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+
+            {draftMode === 'month' && (
+              <View style={styles.modeBody}>
+                <FlatList
+                  data={[...years].sort((a, b) => a - b)}
+                  keyExtractor={(item) => String(item)}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.yearList}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[styles.yearItem, draftYear === item && styles.yearItemActive]}
+                      onPress={() => setDraftYear(item)}
+                    >
+                      <Text style={[styles.yearText, draftYear === item && styles.yearTextActive]}>
+                        {item}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                />
+                <FlatList
+                  data={MONTH_NAMES.map((name, idx) => ({ name, idx }))}
+                  keyExtractor={(item) => String(item.idx)}
+                  style={styles.modeList}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.modeListContent}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[styles.monthItem, draftMonth === item.idx && styles.monthItemActive]}
+                      onPress={() => setDraftMonth(item.idx)}
+                    >
+                      <Text
+                        style={[
+                          styles.monthText,
+                          draftMonth === item.idx && styles.monthTextActive,
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            )}
+
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={clearFilter} style={styles.modalClearButton}>
                 <Text style={styles.modalClearText}>{t('clearFilter')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setShowFilterModal(false)}
-                style={styles.modalCloseButton}
-              >
-                <Text style={styles.modalCloseText}>{t('close')}</Text>
+              <TouchableOpacity onPress={applyDraft} style={styles.modalApplyButton}>
+                <Text style={styles.modalApplyText}>{t('apply')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -377,10 +720,41 @@ const createStyles = (colors: Theme) =>
       fontSize: 14,
       fontWeight: '600',
       color: colors.text,
+      flex: 1,
     },
     filterChevron: {
       fontSize: 12,
       color: colors.textMuted,
+      marginLeft: 8,
+    },
+    quickFilterBar: {
+      flexDirection: 'row',
+      paddingHorizontal: 20,
+      paddingVertical: 8,
+      gap: 8,
+      backgroundColor: colors.backgroundElement,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    quickFilterItem: {
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    quickFilterItemActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    quickFilterText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    quickFilterTextActive: {
+      color: '#fff',
     },
     totalBar: {
       flexDirection: 'row',
@@ -508,6 +882,62 @@ const createStyles = (colors: Theme) =>
       marginBottom: 16,
       textAlign: 'center',
     },
+    modeTabs: {
+      flexDirection: 'row',
+      gap: 6,
+      marginBottom: 16,
+    },
+    modeTab: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.backgroundElement,
+      alignItems: 'center',
+    },
+    modeTabActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    modeTabText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    modeTabTextActive: {
+      color: '#fff',
+    },
+    modeBody: {
+      flexGrow: 0,
+    },
+    modeList: {
+      maxHeight: 260,
+      flexGrow: 0,
+    },
+    modeListContent: {
+      paddingVertical: 8,
+    },
+    fieldLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 8,
+      marginBottom: 4,
+    },
+    dateButton: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.backgroundElement,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      marginBottom: 8,
+    },
+    dateButtonText: {
+      fontSize: 14,
+      color: colors.text,
+    },
     yearList: {
       paddingBottom: 12,
     },
@@ -532,8 +962,21 @@ const createStyles = (colors: Theme) =>
     yearTextActive: {
       color: '#fff',
     },
-    monthList: {
-      paddingVertical: 8,
+    weekItem: {
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    weekItemActive: {
+      backgroundColor: colors.backgroundElement,
+    },
+    weekText: {
+      fontSize: 15,
+      color: colors.text,
+    },
+    weekTextActive: {
+      color: colors.primary,
+      fontWeight: '700',
     },
     monthItem: {
       paddingVertical: 14,
@@ -569,14 +1012,14 @@ const createStyles = (colors: Theme) =>
       color: colors.text,
       fontWeight: '600',
     },
-    modalCloseButton: {
+    modalApplyButton: {
       flex: 1,
       paddingVertical: 12,
       borderRadius: 8,
       backgroundColor: colors.primary,
       alignItems: 'center',
     },
-    modalCloseText: {
+    modalApplyText: {
       color: '#fff',
       fontWeight: '600',
     },

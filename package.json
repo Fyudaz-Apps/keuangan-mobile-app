@@ -16,7 +16,7 @@
     "type-check": "tsc --noEmit",
     "test": "jest",
     "prebuild": "expo prebuild --clean",
-    "build": "cd android && ./gradlew assembleRelease && cd .."
+    "build": "cd android && ./gradlew assembleRelease"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
