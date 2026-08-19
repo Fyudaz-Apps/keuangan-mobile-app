@@ -187,7 +187,18 @@ export const messages: Record<Language, MessageSet> = {
     startDate: 'Tanggal Mulai',
     endDate: 'Tanggal Selesai',
     apply: 'Terapkan',
+    aiChatTitle: 'Asisten AI Keuangan',
+    aiChatSubtitle: 'Tanya kondisi keuangan & dapatkan saran pintar dari data SQLite Anda',
+    aiChatPlaceholder: 'Tanyakan tentang kondisi keuangan Anda...',
+    aiChatSend: 'Kirim',
+    aiChatClear: 'Hapus Percakapan',
+    aiChatQuick1: 'Bagaimana kondisi keuangan saya bulan ini?',
+    aiChatQuick2: 'Apa pengeluaran terbesar saya?',
+    aiChatQuick3: 'Beri saya saran untuk berhemat',
+    aiChatEmpty: 'Belum ada pesan. Mulai bertanya atau pilih pertanyaan cepat di bawah!',
+    aiChatError: 'Gagal mendapatkan respon dari AI. Pastikan API key sudah terpasang.',
   },
+
   en: {
     dashboard: 'Dashboard',
     summary: 'Summary',
@@ -369,8 +380,19 @@ export const messages: Record<Language, MessageSet> = {
     startDate: 'Start Date',
     endDate: 'End Date',
     apply: 'Apply',
+    aiChatTitle: 'AI Financial Advisor',
+    aiChatSubtitle: 'Ask about your finances & get smart insights from your SQLite database',
+    aiChatPlaceholder: 'Ask about your financial status...',
+    aiChatSend: 'Send',
+    aiChatClear: 'Clear Chat',
+    aiChatQuick1: 'How is my financial status this month?',
+    aiChatQuick2: 'What is my largest expense category?',
+    aiChatQuick3: 'Give me tips to save more money',
+    aiChatEmpty: 'No messages yet. Ask a question or tap a quick suggestion below!',
+    aiChatError: 'Failed to get AI response. Please check your Gemini API key.',
   },
 };
+
 
 export function t(key: string): string {
   const language = useAppStore.getState().language as Language;

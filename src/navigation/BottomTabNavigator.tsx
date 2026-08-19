@@ -10,6 +10,7 @@ import DashboardScreen from '@/screens/dashboard/DashboardScreen';
 import TransactionsScreen from '@/screens/transactions/TransactionsScreen';
 import CategoriesScreen from '@/screens/categories/CategoriesScreen';
 import BudgetsScreen from '@/screens/budgets/BudgetsScreen';
+import AIChatScreen from '@/screens/ai/AIChatScreen';
 import SettingsScreen from '@/screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -56,6 +57,9 @@ export function BottomTabNavigator() {
               break;
             case 'Budgets':
               iconName = focused ? 'wallet' : 'wallet-outline';
+              break;
+            case 'AIChat':
+              iconName = focused ? 'sparkles' : 'sparkles-outline';
               break;
             case 'Settings':
               iconName = focused ? 'settings' : 'settings-outline';
@@ -112,6 +116,14 @@ export function BottomTabNavigator() {
         }}
       />
       <Tab.Screen
+        name="AIChat"
+        component={AIChatScreen}
+        options={{
+          title: 'AI Chat',
+          tabBarLabel: 'AI Chat',
+        }}
+      />
+      <Tab.Screen
         name="Settings"
         component={SettingsScreen}
         options={{
@@ -122,6 +134,7 @@ export function BottomTabNavigator() {
     </Tab.Navigator>
   );
 }
+
 
 const styles = StyleSheet.create({
   iconPill: {

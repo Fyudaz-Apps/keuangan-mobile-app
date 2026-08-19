@@ -16,5 +16,7 @@ export type TabParamList = {
   Transactions: undefined;
   Categories: undefined;
   Budgets: undefined;
+  AIChat: undefined;
   Settings: undefined;
 };
+
