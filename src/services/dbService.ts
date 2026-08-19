@@ -465,3 +465,66 @@ export async function updateBudget(id: string, updates: Partial<Budget>): Promis
   values.push(id);
   database.runSync(`UPDATE Budget SET ${fields.join(', ')} WHERE id = ?`, values);
 }
+
+export async function getFinancialSummaryContext(): Promise<string> {
+  const [transactions, categories, budgets] = await Promise.all([
+    getAllTransactions(),
+    getAllCategories(),
+    getAllBudgets(),
+  ]);
+
+  let totalIncome = 0;
+  let totalExpense = 0;
+  const categoryTotals: Record<string, { income: number; expense: number }> = {};
+
+  transactions.forEach((t) => {
+    if (t.type === 'income') {
+      totalIncome += t.amount;
+    } else {
+      totalExpense += t.amount;
+    }
+
+    if (!categoryTotals[t.category]) {
+      categoryTotals[t.category] = { income: 0, expense: 0 };
+    }
+    if (t.type === 'income') {
+      categoryTotals[t.category].income += t.amount;
+    } else {
+      categoryTotals[t.category].expense += t.amount;
+    }
+  });
+
+  const balance = totalIncome - totalExpense;
+
+  const recentTransactions = transactions.slice(0, 15).map((t) => {
+    const dateStr = new Date(t.date).toISOString().split('T')[0];
+    return `- [${dateStr}] ${t.type.toUpperCase()}: ${t.description} (${t.category}) = Rp ${t.amount.toLocaleString('id-ID')}${t.notes ? ` (Catatan: ${t.notes})` : ''}`;
+  });
+
+  const categoryBreakdown = Object.entries(categoryTotals).map(([cat, val]) => {
+    const parts = [];
+    if (val.expense > 0) parts.push(`Pengeluaran: Rp ${val.expense.toLocaleString('id-ID')}`);
+    if (val.income > 0) parts.push(`Pemasukan: Rp ${val.income.toLocaleString('id-ID')}`);
+    return `- ${cat}: ${parts.join(', ')}`;
+  });
+
+  const budgetSummary = budgets.map((b) => {
+    return `- Budget ${b.category} (${b.period}): Rp ${b.amount.toLocaleString('id-ID')}`;
+  });
+
+  return `=== RINGKASAN SALDO & TOTAL ===
+- Total Pemasukan: Rp ${totalIncome.toLocaleString('id-ID')}
+- Total Pengeluaran: Rp ${totalExpense.toLocaleString('id-ID')}
+- Saldo Sisa: Rp ${balance.toLocaleString('id-ID')}
+- Total Jumlah Transaksi: ${transactions.length}
+
+=== RINGKASAN PER KATEGORI ===
+${categoryBreakdown.length > 0 ? categoryBreakdown.join('\n') : 'Belum ada data kategori'}
+
+=== ANGGARAN / BUDGET ===
+${budgetSummary.length > 0 ? budgetSummary.join('\n') : 'Belum ada budget terpasang'}
+
+=== 15 TRANSAKSI TERBARU ===
+${recentTransactions.length > 0 ? recentTransactions.join('\n') : 'Belum ada transaksi'}`;
+}
+

@@ -140,9 +140,87 @@ export async function parseReceiptWithAI(image: GeminiImage): Promise<ParsedTran
   return callGemini(buildReceiptPrompt(), image);
 }
 
+export interface ChatMessage {
+  role: 'user' | 'model';
+  content: string;
+}
+
+/**
+ * Chat with Gemini AI about financial status given transaction context and chat history.
+ */
+export async function chatWithFinancialAI(
+  history: ChatMessage[],
+  financialContext: string
+): Promise<string> {
+  const [apiKey, model] = await Promise.all([getGeminiKey(), getGeminiModel()]);
+  if (!apiKey) {
+    throw new Error(
+      'Gemini API key is not configured. Add one in Settings or via EXPO_PUBLIC_GEMINI_API_KEY in your .env file.'
+    );
+  }
+
+  const systemInstruction = `Anda adalah Asisten Keuangan Pribadi (Financial AI Advisor) berbahasa Indonesia yang ramah, bijak, dan membantu.
+Tugas Anda adalah menganalisis kondisi keuangan pengguna dan menjawab pertanyaan seputar keuangan berdasarkan data transaksi SQLite yang disediakan.
+
+DATA KEUANGAN PENGGUNA SAAT INI:
+${financialContext}
+
+Petunjuk:
+- Berikan analisis atau saran yang relevan, konstruktif, dan berbasis data di atas.
+- Jika pengguna bertanya tentang statistik (misal: pengeluaran terbesar, total saldo, dll), gunakan data yang tersedia di atas.
+- Gunakan bahasa Indonesia yang santun, mudah dipahami, dan menggunakan format yang rapi (gunakan bullet points atau penekanan jika diperlukan).`;
+
+  const contents = [
+    {
+      role: 'user',
+      parts: [{ text: systemInstruction }],
+    },
+    {
+      role: 'model',
+      parts: [{ text: 'Halo! Saya siap membantu Anda menganalisis kondisi keuangan dan memberikan saran terbaik berdasarkan data transaksi Anda. Ada yang ingin Anda tanyakan?' }],
+    },
+    ...history.map((msg) => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }],
+    })),
+  ];
+
+  const response = await fetch(
+    `${GEMINI_BASE_URL}/${encodeURIComponent(model)}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1024,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error('Gemini Chat API error:', errorBody);
+    throw new Error(`Gemini API request failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!textContent) {
+    throw new Error('Tidak ada respon dari AI.');
+  }
+
+  return textContent;
+}
+
 /**
  * Check if the Gemini API key is configured
  */
 export async function isGeminiConfigured(): Promise<boolean> {
   return !!(await getGeminiKey());
 }
+
