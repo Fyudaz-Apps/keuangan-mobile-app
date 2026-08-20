@@ -1,8 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { View, ScrollView, StyleSheet, Text, Dimensions, TouchableOpacity } from 'react-native';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  Dimensions,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { PieChart, BarChart } from 'react-native-chart-kit';
 import { useTransactionStore, useCategoryStore, useBudgetStore } from '@/store';
 import { Card, Button } from '@/components/ui';
@@ -27,17 +36,19 @@ export default function DashboardScreen() {
   const t = useT();
   const styles = createStyles(colors);
   const [period, setPeriod] = useState<PeriodKey>('month');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
 
   const rangeTransactions = useMemo(() => {
-    const { start, end } = getPeriodRange(period);
+    const { start, end } = getPeriodRange(period, selectedDate);
     const startTime = start.getTime();
     const endTime = end.getTime();
     return transactions.filter((tx) => {
       const time = new Date(tx.date).getTime();
       return time >= startTime && time <= endTime;
     });
-  }, [transactions, period]);
+  }, [transactions, period, selectedDate]);
 
   const summary = useMemo(() => {
     const income = rangeTransactions
@@ -70,8 +81,8 @@ export default function DashboardScreen() {
 
   const activePeriod = PERIOD_OPTIONS.find((p) => p.key === period) ?? PERIOD_OPTIONS[2];
   const trendData = useMemo(
-    () => periodTotals(transactions, period, activePeriod.buckets),
-    [transactions, period, activePeriod.buckets]
+    () => periodTotals(transactions, period, activePeriod.buckets, selectedDate),
+    [transactions, period, activePeriod.buckets, selectedDate]
   );
 
   const comparison = useMemo(() => {
@@ -116,6 +127,50 @@ export default function DashboardScreen() {
               </Text>
             </TouchableOpacity>
           ))}
+        </View>
+
+        <View style={styles.datePickerRow}>
+          <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowDatePicker(true)}>
+            <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+            <Text style={styles.datePickerText}>
+              {selectedDate.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </Text>
+          </TouchableOpacity>
+          {Platform.OS === 'web' ? (
+            <input
+              type="date"
+              value={selectedDate.toISOString().split('T')[0]}
+              onChange={(e) => {
+                const date = new Date(e.target.value);
+                if (!isNaN(date.getTime())) setSelectedDate(date);
+              }}
+              style={{
+                padding: 8,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.backgroundElement,
+                fontSize: 14,
+                color: colors.text,
+              }}
+            />
+          ) : (
+            showDatePicker && (
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+                  if (date) setSelectedDate(date);
+                }}
+              />
+            )
+          )}
         </View>
 
         <LinearGradient
@@ -331,6 +386,29 @@ const createStyles = (colors: Theme) =>
     periodChipTextActive: {
       color: '#fff',
       fontWeight: '600',
+    },
+    datePickerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginHorizontal: 16,
+      marginBottom: 8,
+    },
+    datePickerButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.chipBg,
+    },
+    datePickerText: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.text,
     },
     hero: {
       borderRadius: 24,

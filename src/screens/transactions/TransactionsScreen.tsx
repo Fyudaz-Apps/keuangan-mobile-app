@@ -174,7 +174,9 @@ export default function TransactionsScreen() {
       if (tx.type === 'income') income += tx.amount;
       else expense += tx.amount;
     }
-    return { income, expense };
+    const remaining = income - expense;
+    const savingsPercent = income > 0 ? Math.round(((income - expense) / income) * 100) : 0;
+    return { income, expense, remaining, savingsPercent };
   }, [filtered]);
 
   const openAdd = () => {
@@ -444,6 +446,31 @@ export default function TransactionsScreen() {
           <Text style={[styles.totalLabel, { color: colors.danger }]}>{t('expense')}</Text>
           <Text style={[styles.totalValue, { color: colors.danger }]}>
             - Rp {totals.expense.toLocaleString('id-ID')}
+          </Text>
+        </View>
+        <View style={styles.totalItem}>
+          <Text style={[styles.totalLabel, { color: colors.primary }]}>{t('savings')}</Text>
+          <Text
+            style={[
+              styles.totalValue,
+              { color: totals.remaining >= 0 ? colors.success : colors.danger },
+            ]}
+          >
+            {totals.remaining >= 0 ? '+' : '-'} Rp{' '}
+            {Math.abs(totals.remaining).toLocaleString('id-ID')}
+          </Text>
+        </View>
+        <View style={styles.totalItem}>
+          <Text style={[styles.totalLabel, { color: colors.textMuted }]}>
+            {t('savingsPercent')}
+          </Text>
+          <Text
+            style={[
+              styles.totalValue,
+              { color: totals.savingsPercent >= 0 ? colors.success : colors.danger },
+            ]}
+          >
+            {totals.savingsPercent}%
           </Text>
         </View>
       </View>
@@ -758,20 +785,21 @@ const createStyles = (colors: Theme) =>
     },
     totalBar: {
       flexDirection: 'row',
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingVertical: 12,
-      gap: 16,
+      gap: 8,
     },
     totalItem: {
       flex: 1,
+      alignItems: 'center',
     },
     totalLabel: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '600',
       marginBottom: 2,
     },
     totalValue: {
-      fontSize: 16,
+      fontSize: 13,
       fontWeight: '700',
     },
     selectBar: {
