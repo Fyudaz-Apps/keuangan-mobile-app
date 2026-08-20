@@ -197,6 +197,10 @@ export const messages: Record<Language, MessageSet> = {
     aiChatQuick3: 'Beri saya saran untuk berhemat',
     aiChatEmpty: 'Belum ada pesan. Mulai bertanya atau pilih pertanyaan cepat di bawah!',
     aiChatError: 'Gagal mendapatkan respon dari AI. Pastikan API key sudah terpasang.',
+    savings: 'Tabungan',
+    savingsPercent: 'Persentase Tabungan',
+    remainingBalance: 'Sisa Saldo',
+    selectDate: 'Pilih Tanggal',
   },
 
   en: {
@@ -390,9 +394,12 @@ export const messages: Record<Language, MessageSet> = {
     aiChatQuick3: 'Give me tips to save more money',
     aiChatEmpty: 'No messages yet. Ask a question or tap a quick suggestion below!',
     aiChatError: 'Failed to get AI response. Please check your Gemini API key.',
+    savings: 'Savings',
+    savingsPercent: 'Savings Percentage',
+    remainingBalance: 'Remaining Balance',
+    selectDate: 'Select Date',
   },
 };
-
 
 export function t(key: string): string {
   const language = useAppStore.getState().language as Language;

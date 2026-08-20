@@ -37,10 +37,10 @@ function periodLabel(period: PeriodKey, start: Date): string {
 export function periodTotals(
   transactions: Transaction[],
   period: PeriodKey,
-  count: number
+  count: number,
+  referenceDate: Date = new Date()
 ): PeriodTotal[] {
-  const now = new Date();
-  const current = getStartOfPeriod(period, now);
+  const current = getStartOfPeriod(period, referenceDate);
   const buckets: (PeriodTotal & { start: number; end: number })[] = [];
 
   for (let i = count - 1; i >= 0; i--) {
